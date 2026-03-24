@@ -12,14 +12,27 @@ interface ClientData {
   session_id: string;
   business_name: string | null;
   email: string | null;
+  website?: string | null;
   status: string;
   industry_model: string | null;
   ai_comfort: string | null;
+  team_structure?: string | null;
+  strengths_gaps?: string | null;
   investment_capacity: string | null;
   updated_at: string;
   primary_goal?: string | null;
   biggest_challenge?: string | null;
+  tech_stack?: string | null;
+  success_metrics?: string | null;
+  existing_assets?: string | null;
+  untapped_opportunity?: string | null;
+  scaling_bottleneck?: string | null;
+  timeline?: string | null;
+  dream_scenario?: string | null;
   uvp?: string | null;
+  ideal_client?: string | null;
+  unconventional_approach?: string | null;
+  anything_else?: string | null;
   revenue_trajectory?: string | null;
   brand_bio?: string | null;
   brand_voice?: string | null;
@@ -453,22 +466,35 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
                       />
                     )}
                     {section === "form" && (
-                      <div className="space-y-2 text-sm">
-                        {Object.entries({
-                          "Business Name": c.business_name,
-                          Email: c.email,
-                          Industry: c.industry_model,
-                          "AI Comfort": c.ai_comfort,
-                          "Investment Capacity": c.investment_capacity,
-                          "Primary Goal": c.primary_goal,
-                          "Biggest Challenge": c.biggest_challenge,
-                          UVP: c.uvp,
-                          "Revenue Trajectory": c.revenue_trajectory,
-                        }).map(([k, v]) =>
+                      <div className="space-y-1.5 text-sm">
+                        {([
+                          ["Business Name", c.business_name],
+                          ["Email", c.email],
+                          ["Website", c.website],
+                          ["Industry & Model", c.industry_model],
+                          ["Revenue Trajectory", c.revenue_trajectory],
+                          ["Team Structure", c.team_structure],
+                          ["Strengths & Gaps", c.strengths_gaps],
+                          ["Investment Capacity", c.investment_capacity],
+                          ["Primary Goal (90d)", c.primary_goal],
+                          ["Biggest Challenge", c.biggest_challenge],
+                          ["Current Tech Stack", c.tech_stack],
+                          ["Success Metrics", c.success_metrics],
+                          ["Existing Data & Assets", c.existing_assets],
+                          ["Untapped Opportunity", c.untapped_opportunity],
+                          ["Scaling Bottleneck", c.scaling_bottleneck],
+                          ["Implementation Timeline", c.timeline],
+                          ["AI Comfort Level", c.ai_comfort],
+                          ["Dream Scenario (3yr)", c.dream_scenario],
+                          ["Unique Value Prop", c.uvp],
+                          ["Ideal Client Profile", c.ideal_client],
+                          ["Unconventional Approach", c.unconventional_approach],
+                          ["Anything Else", c.anything_else],
+                        ] as [string, string | null | undefined][]).map(([k, v]) =>
                           v ? (
-                            <div key={k} className="flex gap-2">
-                              <span className="text-slate-500 w-36 shrink-0">{k}:</span>
-                              <span className="text-slate-300">{v}</span>
+                            <div key={k} className="flex gap-2 py-1 border-b border-slate-800/60 last:border-0">
+                              <span className="text-slate-500 w-40 shrink-0 text-xs pt-0.5">{k}</span>
+                              <span className="text-slate-300 text-xs leading-relaxed">{v}</span>
                             </div>
                           ) : null
                         )}

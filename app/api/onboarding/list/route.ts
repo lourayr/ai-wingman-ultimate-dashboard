@@ -7,9 +7,13 @@ export async function GET() {
     const rows = await sql`
       SELECT
         id, session_id, status, current_step,
-        email, business_name, industry_model, ai_comfort,
-        investment_capacity, primary_goal, biggest_challenge,
-        uvp, revenue_trajectory,
+        email, business_name, website, industry_model, ai_comfort,
+        team_structure, strengths_gaps, investment_capacity,
+        primary_goal, biggest_challenge, tech_stack,
+        success_metrics, existing_assets, untapped_opportunity,
+        scaling_bottleneck, timeline, dream_scenario,
+        uvp, ideal_client, unconventional_approach, anything_else,
+        revenue_trajectory,
         brand_bio, brand_voice, banned_words, persuasive_premise,
         testimonials, content_keywords, offer_keywords,
         created_at, updated_at
