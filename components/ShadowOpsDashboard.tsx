@@ -162,15 +162,29 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
   const [copied, setCopied] = useState<string | null>(null);
   const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
 
+  const targetClientId = searchParams.get("client");
+
   useEffect(() => {
     setLoading(true);
     fetch("/api/onboarding/list")
       .then((r) => r.json())
       .then((d) => {
-        if (d.ok) setClients(d.submissions);
+        if (d.ok) {
+          setClients(d.submissions);
+          // Auto-expand and scroll to the target client once data loads
+          if (targetClientId) {
+            setExpandedId(targetClientId);
+            // Scroll after a short delay so the card has rendered
+            setTimeout(() => {
+              const el = document.getElementById(`client-${targetClientId}`);
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 150);
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copyText = (text: string, key: string) => {
@@ -245,7 +259,7 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
           );
 
           return (
-            <div key={c.session_id} className="glass rounded-xl overflow-hidden">
+            <div key={c.session_id} id={`client-${c.session_id}`} className="glass rounded-xl overflow-hidden">
               {/* Card Header */}
               <button
                 className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/5 transition-colors"

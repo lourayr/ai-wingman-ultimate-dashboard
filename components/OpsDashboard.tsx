@@ -205,7 +205,7 @@ export default async function OpsDashboard() {
                     {String(c.business_name ?? "?")[0]?.toUpperCase()}
                   </div>
                   <Link
-                    href={`/onboarding/summary?session=${c.session_id}`}
+                    href={`/shadow?client=${c.session_id}`}
                     className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
                   >
                     <div className="font-medium text-slate-200 truncate">
@@ -232,10 +232,11 @@ export default async function OpsDashboard() {
                       {new Date(String(c.updated_at)).toLocaleDateString()}
                     </span>
                     <Link
-                      href={`/shadow?client=${c.session_id}`}
-                      className="text-xs bg-purple-500/10 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-lg hover:bg-purple-500/20 transition-colors whitespace-nowrap"
+                      href={`/onboarding/summary?session=${c.session_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs bg-slate-800 border border-slate-700 text-slate-400 px-2.5 py-1 rounded-lg hover:bg-slate-700 transition-colors whitespace-nowrap"
                     >
-                      Shadow Ops →
+                      Form
                     </Link>
                   </div>
                 </div>
