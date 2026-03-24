@@ -112,11 +112,15 @@ const PRIORITIES = [
   { text: "Review AI Income Workshop progress", urgency: "green" },
 ];
 
-const AUTOMATIONS = [
-  { name: "Order Router (Make.com)", status: "green" },
-  { name: "Client Intake Auto-Processor", status: "amber" },
-  { name: "Daily CEO Brief", status: "green" },
-  { name: "Shadow Ops Outreach Sequence", status: "amber" },
+const AUTOMATIONS: Array<{ name: string; status: "live" | "planned" | "partial"; tool: string }> = [
+  { name: "Daily CEO Brief (this dashboard)", status: "live", tool: "Vercel + OpenRouter" },
+  { name: "Client Intake → AI Brief", status: "live", tool: "Dashboard onboarding" },
+  { name: "Gamma Strategy via Discord", status: "live", tool: "OpenClaw + Discord" },
+  { name: "AI Intelligence Report", status: "live", tool: "OpenRouter" },
+  { name: "Order Router", status: "planned", tool: "Zapier or Make.com" },
+  { name: "Shadow Ops Outreach Sequence", status: "planned", tool: "Email / CRM" },
+  { name: "Treasures Bio Routing", status: "partial", tool: "WooCommerce" },
+  { name: "Lead Scoring Auto-Tag", status: "planned", tool: "Dashboard AI" },
 ];
 
 const DECISIONS = [
@@ -349,6 +353,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
   const [aiModelUsed, setAiModelUsed] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<string[]>(DECISIONS);
   const [loadingDecisions, setLoadingDecisions] = useState(false);
+  const [decisionModel, setDecisionModel] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -446,7 +451,10 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         }),
       });
       const data = await res.json();
-      if (data.ok && data.decisions?.length > 0) setDecisions(data.decisions);
+      if (data.ok && data.decisions?.length > 0) {
+        setDecisions(data.decisions);
+        setDecisionModel(data.model ?? null);
+      }
     } catch { /* keep static fallback */ }
     finally { setLoadingDecisions(false); }
   }, [clients, googleData]);
@@ -458,6 +466,16 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       .then((d) => { if (d.ok) setClients(d.submissions); })
       .catch(() => {});
   }, [fetchGoogleData]);
+
+  // Auto-load AI decisions once data is available (run once per session)
+  const [decisionsAutoTriggered, setDecisionsAutoTriggered] = useState(false);
+  useEffect(() => {
+    if (decisionsAutoTriggered) return;
+    if (googleData.gmail.connected || clients.length > 0) {
+      setDecisionsAutoTriggered(true);
+      fetchDecisions();
+    }
+  }, [googleData.gmail.connected, clients.length, decisionsAutoTriggered, fetchDecisions]);
 
   // Auto-generate AI brief on load (sessionStorage cache — avoids re-calling on every render)
   const [autoTriggered, setAutoTriggered] = useState(false);
@@ -859,7 +877,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
             {clients.slice(0, 5).map((c) => (
               <Link
                 key={c.session_id}
-                href={`/onboarding/summary?session=${c.session_id}`}
+                href={`/shadow?client=${c.session_id}`}
                 className="flex items-center gap-3 py-2 px-2 -mx-2 border-b border-slate-800 last:border-0 rounded-lg hover:bg-white/5 transition-colors group"
               >
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
@@ -887,23 +905,28 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       </Section>
 
       {/* Automation Health */}
-      <Section title="Automation Health" icon={Zap} defaultOpen={false}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <Section
+        title="Automation Stack"
+        icon={Zap}
+        badge={`${AUTOMATIONS.filter(a => a.status === "live").length} live`}
+        defaultOpen={false}
+      >
+        <div className="space-y-2">
           {AUTOMATIONS.map((a) => (
-            <div key={a.name} className="flex items-center gap-2">
-              <div
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  a.status === "green" ? "bg-green-400" : "bg-amber-400"
-                }`}
-              />
-              <span className="text-slate-300 text-sm">{a.name}</span>
+            <div key={a.name} className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full shrink-0 ${a.status === "live" ? "bg-green-400" : a.status === "partial" ? "bg-amber-400" : "bg-slate-600"}`} />
+              <span className="text-slate-300 text-sm flex-1">{a.name}</span>
+              <span className={`text-xs ${a.status === "live" ? "text-green-500" : a.status === "partial" ? "text-amber-500" : "text-slate-600"}`}>
+                {a.status === "live" ? "live" : a.status === "partial" ? "partial" : "planned"}
+              </span>
+              <span className="text-slate-700 text-xs hidden sm:block">{a.tool}</span>
             </div>
           ))}
         </div>
       </Section>
 
       {/* Decision Queue — AI-powered via Grok 3 */}
-      <Section title="Decision Queue" icon={AlertCircle} defaultOpen={false}>
+      <Section title="Decision Queue" icon={AlertCircle} badge={decisionModel ? `via ${MODEL_OPTIONS.find(m => m.id === decisionModel)?.label ?? decisionModel}` : undefined} defaultOpen={false}>
         <div className="space-y-3">
           <div className="space-y-2">
             {decisions.map((d, i) => (

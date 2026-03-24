@@ -200,15 +200,14 @@ export default async function OpsDashboard() {
           ) : (
             <div className="divide-y divide-slate-800">
               {clients.map((c) => (
-                <Link
-                  key={String(c.session_id)}
-                  href={`/onboarding/summary?session=${c.session_id}`}
-                  className="px-5 py-4 flex items-center gap-4 hover:bg-white/5 transition-colors"
-                >
+                <div key={String(c.session_id)} className="px-5 py-4 flex items-center gap-4">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
                     {String(c.business_name ?? "?")[0]?.toUpperCase()}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/onboarding/summary?session=${c.session_id}`}
+                    className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                  >
                     <div className="font-medium text-slate-200 truncate">
                       {String(c.business_name ?? "Unnamed Business")}
                     </div>
@@ -218,7 +217,7 @@ export default async function OpsDashboard() {
                     {c.industry_model && (
                       <div className="text-slate-500 text-xs truncate">{String(c.industry_model)}</div>
                     )}
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full border ${
@@ -229,14 +228,17 @@ export default async function OpsDashboard() {
                     >
                       {String(c.status)}
                     </span>
-                    <span className="text-slate-500 text-xs">
+                    <span className="text-slate-500 text-xs hidden sm:block">
                       {new Date(String(c.updated_at)).toLocaleDateString()}
                     </span>
-                    <span className="text-xs text-purple-400">
-                      View →
-                    </span>
+                    <Link
+                      href={`/shadow?client=${c.session_id}`}
+                      className="text-xs bg-purple-500/10 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-lg hover:bg-purple-500/20 transition-colors whitespace-nowrap"
+                    >
+                      Shadow Ops →
+                    </Link>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}

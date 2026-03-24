@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Target, Copy, CheckCircle, ExternalLink, AlertCircle, ChevronDown, ChevronUp, Zap, Loader2 } from "lucide-react";
 import Navigation from "./Navigation";
+
+// Gamma Strategy Discord channel — OpenClaw monitors this
+const GAMMA_DISCORD_CHANNEL = "1483998065638506536";
 
 interface ClientData {
   session_id: string;
@@ -150,9 +154,10 @@ Timeline: 90 days`;
 }
 
 export default function ShadowOpsDashboard({ standalone = true }: { standalone?: boolean }) {
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(searchParams.get("client"));
   const [activeSection, setActiveSection] = useState<Record<string, SectionTab>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
@@ -179,17 +184,19 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
     const id = c.session_id;
     setGammaJobs((prev) => ({ ...prev, [id]: { status: "sending" } }));
     const brief = buildFullProfileBlock(c);
+    const message = `🚀 **GAMMA STRATEGY REQUEST**\n**Client:** ${c.business_name ?? "Unknown"}\n**Email:** ${c.email ?? "—"}\n\n${brief.slice(0, 1600)}\n\n*OpenClaw: paste above brief into BizStrategy GPT → get response → create Gamma deck → post URL back to dashboard*`;
+
     try {
-      const res = await fetch("/api/openclaw/queue", {
+      const res = await fetch("/api/discord/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "gamma_strategy", clientName: c.business_name ?? "Unknown Client", brief }),
+        body: JSON.stringify({ channelId: GAMMA_DISCORD_CHANNEL, content: message }),
       });
       const data = await res.json();
       if (data.ok) {
-        setGammaJobs((prev) => ({ ...prev, [id]: { status: "queued", jobId: data.jobId } }));
+        setGammaJobs((prev) => ({ ...prev, [id]: { status: "queued" } }));
       } else {
-        setGammaJobs((prev) => ({ ...prev, [id]: { status: "error", error: data.error ?? "Queue failed" } }));
+        setGammaJobs((prev) => ({ ...prev, [id]: { status: "error", error: data.error ?? "Discord send failed" } }));
       }
     } catch (err) {
       setGammaJobs((prev) => ({ ...prev, [id]: { status: "error", error: String(err) } }));
@@ -319,13 +326,13 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
                             ) : (
                               <Zap className="w-3.5 h-3.5" />
                             )}
-                            {isQueued ? "Gamma Queued" : isSending ? "Sending…" : "Generate Gamma"}
+                            {isQueued ? "Sent to Discord ✓" : isSending ? "Sending…" : "Generate Gamma"}
                           </button>
                           {gj?.status === "error" && (
                             <p className="text-red-400 text-xs">{gj.error}</p>
                           )}
                           {isQueued && (
-                            <p className="text-slate-500 text-xs">OpenClaw will process &amp; post result</p>
+                            <p className="text-slate-500 text-xs">OpenClaw will see it in Discord</p>
                           )}
                         </div>
                       );

@@ -65,7 +65,8 @@ export async function POST(request: NextRequest) {
 
   const MODELS = [
     "x-ai/grok-3-beta",
-    "deepseek/deepseek-r1",
+    "deepseek/deepseek-r1:free",
+    "openai/gpt-4o-mini",
   ];
 
   for (const model of MODELS) {
