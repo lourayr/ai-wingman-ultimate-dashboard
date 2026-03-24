@@ -50,6 +50,18 @@ interface GmailData {
   importantMessages?: ImportantMessage[];
 }
 
+interface SlackMessage { text: string; date: string; time: string; isBot: boolean }
+interface SlackChannel { id: string; name: string; topic: string; messages: SlackMessage[]; lastActivity: string }
+interface SlackData { connected: boolean; channels: SlackChannel[] }
+
+interface AsanaTask { gid: string; name: string; completed: boolean; due_on: string | null; projects: Array<{ name: string }> }
+interface AsanaProject { gid: string; name: string; current_status?: { text: string; color: string } | null }
+interface AsanaSummary { total: number; open: number; overdue: number; completed: number }
+interface AsanaData { connected: boolean; tasks: AsanaTask[]; projects: AsanaProject[]; summary: AsanaSummary }
+
+interface NotionPage { id: string; title: string; status: string | null; lastEdited: string; url: string }
+interface NotionData { connected: boolean; pages: NotionPage[] }
+
 interface DiscordMessage {
   id: string;
   content: string;
@@ -76,6 +88,9 @@ interface GoogleData {
   gmail: GmailData;
   calendar: { connected: boolean; events: CalendarEvent[] };
   discord: { connected: boolean; channels: DiscordChannel[] };
+  slack: SlackData;
+  asana: AsanaData;
+  notion: NotionData;
 }
 
 interface ClientRow {
@@ -303,6 +318,9 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
     gmail: { connected: false },
     calendar: { connected: false, events: [] },
     discord: { connected: false, channels: [] },
+    slack: { connected: false, channels: [] },
+    asana: { connected: false, tasks: [], projects: [], summary: { total: 0, open: 0, overdue: 0, completed: 0 } },
+    notion: { connected: false, pages: [] },
   });
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -319,23 +337,33 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
   const fetchGoogleData = useCallback(async () => {
     setLoadingGoogle(true);
     try {
-      const [gmailRes, calRes, discordRes] = await Promise.all([
+      const [gmailRes, calRes, discordRes, slackRes, asanaRes, notionRes] = await Promise.all([
         fetch("/api/gmail"),
         fetch("/api/calendar"),
         fetch("/api/discord"),
+        fetch("/api/slack"),
+        fetch("/api/asana"),
+        fetch("/api/notion"),
       ]);
       const gmail = await gmailRes.json();
       const calendar = await calRes.json();
       const discord = await discordRes.json();
-      setGoogleData({ gmail, calendar, discord });
+      const slack = await slackRes.json();
+      const asana = await asanaRes.json();
+      const notion = await notionRes.json();
+      setGoogleData({ gmail, calendar, discord, slack, asana, notion });
 
-      // Update calm score based on data
-      let score = 60;
-      if (gmail.connected) score += 15;
-      if (calendar.connected) score += 10;
-      if (!gmail.importantCount || gmail.importantCount < 5) score += 10;
-      if (discord.connected) score += 5;
-      setCalmScore(Math.min(score, 100));
+      // Calm score: more connected tools = less chaos
+      let score = 50;
+      if (gmail.connected) score += 12;
+      if (calendar.connected) score += 8;
+      if (!gmail.importantCount || gmail.importantCount < 5) score += 8;
+      if (slack.connected) score += 5;
+      if (asana.connected) score += 5;
+      if (notion.connected) score += 4;
+      if (discord.connected) score += 4;
+      if (asana.connected && (asana.summary?.overdue ?? 0) > 0) score -= 10;
+      setCalmScore(Math.min(Math.max(score, 20), 100));
     } catch {
       // ignore
     } finally {
@@ -354,6 +382,9 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           gmail: googleData.gmail,
           calendar: googleData.calendar,
           clients,
+          slack: googleData.slack,
+          asana: googleData.asana,
+          notion: googleData.notion,
         }),
       });
       const data = await res.json();
@@ -424,7 +455,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           },
           {
             label: "Tools Live",
-            value: [googleData.gmail.connected, googleData.calendar.connected].filter(Boolean).length + "/2",
+            value: [googleData.gmail.connected, googleData.calendar.connected, googleData.slack.connected, googleData.asana.connected, googleData.notion.connected, googleData.discord.connected].filter(Boolean).length + "/6",
             icon: Zap,
             color: "text-cyan-400",
           },
@@ -686,13 +717,189 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         </div>
       </Section>
 
+      {/* Slack */}
+      <Section
+        title="Slack"
+        icon={Zap}
+        badge={googleData.slack.connected ? String(googleData.slack.channels.length) + " channels" : undefined}
+        defaultOpen={false}
+      >
+        {googleData.slack.connected && googleData.slack.channels.length > 0 ? (
+          <div className="space-y-4">
+            {googleData.slack.channels.map((ch) => (
+              <div key={ch.id} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-300 text-sm font-medium">#{ch.name}</span>
+                  <span className="text-slate-600 text-xs">last: {ch.lastActivity}</span>
+                  {ch.topic && <span className="text-slate-500 text-xs truncate hidden sm:block">{ch.topic.slice(0, 60)}</span>}
+                </div>
+                {ch.messages.slice(0, 3).map((msg, i) => (
+                  <div key={i} className="bg-slate-800/40 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-slate-500 text-xs">{msg.date} {msg.time}</span>
+                      {msg.isBot && <span className="text-cyan-400 text-xs">bot</span>}
+                    </div>
+                    <p className="text-slate-300 text-xs leading-relaxed">{msg.text}</p>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-slate-400 text-sm">
+              Connect Slack to see channel messages here — even older messages are useful for the AI synthesis.
+            </p>
+            <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
+              <p className="text-slate-300 font-medium">Setup (3 min):</p>
+              <p>1. api.slack.com/apps → Create New App → From Scratch</p>
+              <p>2. OAuth &amp; Permissions → Scopes → Add: <code className="text-purple-300">channels:history channels:read groups:history</code></p>
+              <p>3. Install to Workspace → copy <strong>Bot User OAuth Token</strong> (xoxb-...)</p>
+              <p>4. Invite bot to channels: <code className="text-purple-300">/invite @YourBotName</code></p>
+              <p>5. Vercel env: <code className="text-purple-300">SLACK_BOT_TOKEN=xoxb-...</code></p>
+              <p className="text-slate-500">Optional: <code className="text-purple-300">SLACK_CHANNEL_IDS</code> (comma-separated) — otherwise fetches all channels the bot is in</p>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {/* Asana */}
+      <Section
+        title="Asana"
+        icon={CheckCircle}
+        badge={googleData.asana.connected ? `${googleData.asana.summary?.open ?? 0} open` : undefined}
+        defaultOpen={false}
+      >
+        {googleData.asana.connected && googleData.asana.tasks.length > 0 ? (
+          <div className="space-y-3">
+            {googleData.asana.summary && (
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Open", value: googleData.asana.summary.open, color: "text-amber-400" },
+                  { label: "Overdue", value: googleData.asana.summary.overdue, color: "text-red-400" },
+                  { label: "Done", value: googleData.asana.summary.completed, color: "text-green-400" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="bg-slate-800/40 rounded-lg p-2 text-center">
+                    <div className={`text-lg font-bold ${color}`}>{value}</div>
+                    <div className="text-slate-500 text-xs">{label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              {googleData.asana.tasks
+                .filter((t) => !t.completed)
+                .slice(0, 6)
+                .map((task) => {
+                  const isOverdue = task.due_on && new Date(task.due_on) < new Date();
+                  return (
+                    <div key={task.gid} className="flex items-start gap-2 py-1.5 border-b border-slate-800 last:border-0">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${isOverdue ? "bg-red-400" : "bg-amber-400"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-200 text-sm truncate">{task.name}</p>
+                        {task.projects?.[0] && (
+                          <p className="text-slate-500 text-xs">{task.projects[0].name}</p>
+                        )}
+                      </div>
+                      {task.due_on && (
+                        <span className={`text-xs shrink-0 ${isOverdue ? "text-red-400" : "text-slate-500"}`}>
+                          {isOverdue ? "OVERDUE" : task.due_on}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-slate-400 text-sm">
+              Connect Asana to surface open tasks (even 2024 backlog is useful — the AI will flag what&apos;s been sitting).
+            </p>
+            <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
+              <p className="text-slate-300 font-medium">Setup (1 min):</p>
+              <p>1. app.asana.com/0/my-apps → Personal access tokens → Create token</p>
+              <p>2. Vercel env: <code className="text-purple-300">ASANA_TOKEN=your-token</code></p>
+              <p className="text-slate-500">Optional: <code className="text-purple-300">ASANA_WORKSPACE_GID</code> (auto-detected if not set)</p>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {/* Notion */}
+      <Section
+        title="Notion"
+        icon={Brain}
+        badge={googleData.notion.connected ? `${googleData.notion.pages.length} pages` : undefined}
+        defaultOpen={false}
+      >
+        {googleData.notion.connected && googleData.notion.pages.length > 0 ? (
+          <div className="space-y-1.5">
+            {googleData.notion.pages.slice(0, 8).map((page) => (
+              <a
+                key={page.id}
+                href={page.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0 hover:bg-white/5 -mx-1 px-1 rounded transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-200 text-sm truncate">{page.title}</p>
+                  {page.status && (
+                    <span className="text-xs text-slate-500">{page.status}</span>
+                  )}
+                </div>
+                <span className="text-slate-600 text-xs shrink-0">
+                  {new Date(page.lastEdited).toLocaleDateString()}
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-slate-400 text-sm">
+              Connect Notion to surface recently edited pages alongside your other tools.
+            </p>
+            <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
+              <p className="text-slate-300 font-medium">Setup (2 min):</p>
+              <p>1. notion.so/my-integrations → New integration → Internal</p>
+              <p>2. Copy the <strong>Internal Integration Secret</strong></p>
+              <p>3. Share each Notion page/DB with your integration (Share → Invite)</p>
+              <p>4. Vercel env: <code className="text-purple-300">NOTION_TOKEN=secret_...</code></p>
+            </div>
+          </div>
+        )}
+      </Section>
+
       {/* AI Intelligence Report */}
       <Section title="AI Intelligence Report" icon={Brain} defaultOpen={false}>
         {aiInsights.length === 0 && !generatingAI && !aiError && (
           <div className="space-y-3">
+            {/* Show which tools will feed the report */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { name: "Gmail", on: googleData.gmail.connected },
+                { name: "Calendar", on: googleData.calendar.connected },
+                { name: "Slack", on: googleData.slack.connected },
+                { name: "Asana", on: googleData.asana.connected },
+                { name: "Notion", on: googleData.notion.connected },
+                { name: `${clients.length} Clients`, on: clients.length > 0 },
+              ].map(({ name, on }) => (
+                <span
+                  key={name}
+                  className={`text-xs px-2 py-0.5 rounded-full border ${
+                    on
+                      ? "bg-green-500/10 text-green-400 border-green-500/20"
+                      : "bg-slate-800 text-slate-600 border-slate-700"
+                  }`}
+                >
+                  {on ? "✓" : "–"} {name}
+                </span>
+              ))}
+            </div>
             <p className="text-slate-400 text-sm">
-              Generate a real-time AI analysis across all your connected tools. Uses your live Gmail,
-              Calendar, and client pipeline data — synthesized by GPT-4o-mini via OpenRouter.
+              AI reads all connected tools above and surfaces cross-tool insights you can&apos;t see in any single app.
+              Uses OpenRouter (gpt-4o-mini) — ~$0.001/report.
             </p>
             <button
               onClick={generateAIReport}
@@ -703,7 +910,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
               Generate AI Report
             </button>
             {!googleData.gmail.connected && (
-              <p className="text-slate-500 text-xs">Connect Gmail first to enable AI analysis.</p>
+              <p className="text-slate-500 text-xs">Connect at least Gmail to enable AI analysis.</p>
             )}
           </div>
         )}
@@ -832,11 +1039,11 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {[
             { name: "Gmail", connected: googleData.gmail.connected, href: "/api/auth/google" },
-            { name: "Google Calendar", connected: googleData.calendar.connected, href: "/api/auth/google" },
+            { name: "Calendar", connected: googleData.calendar.connected, href: "/api/auth/google" },
+            { name: "Slack", connected: googleData.slack.connected, href: "#" },
+            { name: "Asana", connected: googleData.asana.connected, href: "#" },
+            { name: "Notion", connected: googleData.notion.connected, href: "#" },
             { name: "Discord", connected: googleData.discord.connected, href: "#" },
-            { name: "OpenClaw", connected: false, href: "/ops" },
-            { name: "Notion", connected: false, href: "#" },
-            { name: "Stripe", connected: false, href: "#" },
           ].map((tool) => (
             <a
               key={tool.name}
