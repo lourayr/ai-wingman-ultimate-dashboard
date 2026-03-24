@@ -8,7 +8,11 @@ export async function GET() {
       SELECT
         id, session_id, status, current_step,
         email, business_name, industry_model, ai_comfort,
-        investment_capacity, created_at, updated_at
+        investment_capacity, primary_goal, biggest_challenge,
+        uvp, revenue_trajectory,
+        brand_bio, brand_voice, banned_words, persuasive_premise,
+        testimonials, content_keywords, offer_keywords,
+        created_at, updated_at
       FROM onboarding_submissions
       ORDER BY updated_at DESC
     `;

@@ -118,8 +118,9 @@ export default async function OpsDashboard() {
           ) : (
             <div className="divide-y divide-slate-800">
               {clients.map((c) => (
-                <div
+                <Link
                   key={String(c.session_id)}
+                  href={`/onboarding/summary?session=${c.session_id}`}
                   className="px-5 py-4 flex items-center gap-4 hover:bg-white/5 transition-colors"
                 >
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
@@ -149,14 +150,11 @@ export default async function OpsDashboard() {
                     <span className="text-slate-500 text-xs">
                       {new Date(String(c.updated_at)).toLocaleDateString()}
                     </span>
-                    <a
-                      href={`/onboarding/summary?session=${c.session_id}`}
-                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      View
-                    </a>
+                    <span className="text-xs text-purple-400">
+                      View →
+                    </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

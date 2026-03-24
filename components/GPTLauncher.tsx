@@ -107,19 +107,91 @@ const CAT_COLORS: Record<string, string> = {
   pink: "border-pink-500/30 text-pink-400",
 };
 
-interface IntakeData {
-  businessName?: string;
+interface SubmissionData {
+  session_id?: string;
+  status?: string;
   email?: string;
-  primaryGoal?: string;
-  biggestChallenge?: string;
+  business_name?: string;
+  website?: string;
+  industry_model?: string;
+  team_structure?: string;
+  revenue_trajectory?: string;
+  primary_goal?: string;
+  biggest_challenge?: string;
+  tech_stack?: string;
+  strengths_gaps?: string;
+  investment_capacity?: string;
+  success_metrics?: string;
+  existing_assets?: string;
+  untapped_opportunity?: string;
+  scaling_bottleneck?: string;
+  timeline?: string;
+  ai_comfort?: string;
+  dream_scenario?: string;
+  uvp?: string;
+  ideal_client?: string;
+  unconventional_approach?: string;
+  anything_else?: string;
+  brand_bio?: string;
+  brand_voice?: string;
+  banned_words?: string;
+  persuasive_premise?: string;
+  testimonials?: string;
+  content_keywords?: string;
+  offer_keywords?: string;
+}
+
+function buildFullBrief(d: SubmissionData): string {
+  const lines = [
+    "Start with this data and guide me to the right next steps, questions, and/or strategy:",
+    "",
+    `Business Name: ${d.business_name ?? ""}`,
+    `Email: ${d.email ?? ""}`,
+    `Website: ${d.website ?? ""}`,
+    `Industry & Business Model: ${d.industry_model ?? ""}`,
+    `Team Structure: ${d.team_structure ?? ""}`,
+    `Revenue & Growth Trajectory: ${d.revenue_trajectory ?? ""}`,
+    `Primary Goal (90 Days): ${d.primary_goal ?? ""}`,
+    `Biggest Challenge: ${d.biggest_challenge ?? ""}`,
+    `Current Tech Stack: ${d.tech_stack ?? ""}`,
+    `Team Strengths & Gaps: ${d.strengths_gaps ?? ""}`,
+    `Investment Capacity: ${d.investment_capacity ?? ""}`,
+    `Success Metrics: ${d.success_metrics ?? ""}`,
+    `Existing Data & Assets: ${d.existing_assets ?? ""}`,
+    `Biggest Untapped Opportunity: ${d.untapped_opportunity ?? ""}`,
+    `Scaling Bottleneck: ${d.scaling_bottleneck ?? ""}`,
+    `Implementation Timeline: ${d.timeline ?? ""}`,
+    `AI & Automation Comfort Level: ${d.ai_comfort ?? ""}`,
+    `Dream Scenario (3 Years): ${d.dream_scenario ?? ""}`,
+    `Unique Value Proposition: ${d.uvp ?? ""}`,
+    `Ideal Client Profile: ${d.ideal_client ?? ""}`,
+    `Unconventional Approach: ${d.unconventional_approach ?? ""}`,
+    `Anything Else: ${d.anything_else ?? ""}`,
+  ];
+
+  const hasDna =
+    d.brand_bio || d.brand_voice || d.banned_words || d.persuasive_premise ||
+    d.testimonials || d.content_keywords || d.offer_keywords;
+
+  if (hasDna) {
+    lines.push("", "── CAMPAIGN DNA ──");
+    if (d.brand_bio) lines.push(`Brand Bio: ${d.brand_bio}`);
+    if (d.brand_voice) lines.push(`Brand Voice: ${d.brand_voice}`);
+    if (d.banned_words) lines.push(`Banned Words / Phrases: ${d.banned_words}`);
+    if (d.persuasive_premise) lines.push(`Persuasive Premise: ${d.persuasive_premise}`);
+    if (d.testimonials) lines.push(`Testimonials: ${d.testimonials}`);
+    if (d.content_keywords) lines.push(`Content Keywords: ${d.content_keywords}`);
+    if (d.offer_keywords) lines.push(`Offer Keywords: ${d.offer_keywords}`);
+  }
+
+  return lines.join("\n");
 }
 
 export default function GPTLauncher() {
-  const [intakeData, setIntakeData] = useState<IntakeData>({});
+  const [submission, setSubmission] = useState<SubmissionData>({});
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    // Try to load from sessionStorage or DB
     const sessionId =
       typeof window !== "undefined"
         ? localStorage.getItem("wingman-onboarding-session")
@@ -129,31 +201,18 @@ export default function GPTLauncher() {
       fetch(`/api/onboarding?session=${sessionId}`)
         .then((r) => r.json())
         .then((d) => {
-          if (d.ok && d.submission) {
-            const s = d.submission;
-            setIntakeData({
-              businessName: s.business_name,
-              email: s.email,
-              primaryGoal: s.primary_goal,
-              biggestChallenge: s.biggest_challenge,
-            });
-          }
+          if (d.ok && d.submission) setSubmission(d.submission);
         })
         .catch(() => {});
     }
   }, []);
 
   const buildPrompt = (): string => {
-    if (intakeData.businessName) {
-      return `Start with this data and guide me to the right next steps, questions, and/or strategy:
-
-Business Name: ${intakeData.businessName ?? ""}
-Email: ${intakeData.email ?? ""}
-Primary Goal (90 Days): ${intakeData.primaryGoal ?? ""}
-Biggest Challenge: ${intakeData.biggestChallenge ?? ""}`;
-    }
+    if (submission.business_name) return buildFullBrief(submission);
     return "I need help with my business strategy and AI implementation. Let's start with some questions to understand my situation.";
   };
+
+  const intakeData = { businessName: submission.business_name };
 
   const launchWithData = (slug: string) => {
     const prompt = buildPrompt();

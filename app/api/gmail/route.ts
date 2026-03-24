@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { googleFetch, getGoogleAccessToken } from "@/lib/google-fetch";
 
+interface MimePart {
+  mimeType: string;
+  body?: { data?: string };
+  parts?: MimePart[];
+}
+
 interface GmailMessage {
   id: string;
   snippet: string;
-  payload?: {
+  payload?: MimePart & {
     headers?: Array<{ name: string; value: string }>;
-    parts?: Array<{ mimeType: string; body?: { data?: string } }>;
-    body?: { data?: string };
   };
 }
 
@@ -42,14 +46,19 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+// Recursively walk the full MIME tree and collect all leaf parts
+function extractParts(part: MimePart): MimePart[] {
+  if (part.mimeType.startsWith("multipart/")) {
+    return (part.parts ?? []).flatMap(extractParts);
+  }
+  return [part];
+}
+
 function getBody(msg: GmailMessage): string {
   const payload = msg.payload;
   if (!payload) return msg.snippet ?? "";
 
-  // Collect all parts including nested multipart
-  const allParts: Array<{ mimeType: string; body?: { data?: string } }> = [];
-  if (payload.parts) allParts.push(...payload.parts);
-  if (payload.body?.data) allParts.unshift({ mimeType: "text/html", body: payload.body });
+  const allParts = extractParts(payload);
 
   // Prefer plain text
   for (const part of allParts) {
@@ -63,6 +72,12 @@ function getBody(msg: GmailMessage): string {
     if (part.mimeType === "text/html" && part.body?.data) {
       return stripHtml(decodeBase64(part.body.data));
     }
+  }
+
+  // Last resort: if payload itself has body data (non-multipart top-level)
+  if (payload.body?.data) {
+    const raw = decodeBase64(payload.body.data);
+    return payload.mimeType === "text/html" ? stripHtml(raw) : raw.trim();
   }
 
   return msg.snippet ?? "";
