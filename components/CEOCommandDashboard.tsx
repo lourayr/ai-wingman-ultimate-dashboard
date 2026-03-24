@@ -85,6 +85,24 @@ const DECISIONS = [
   "Which GPT gets client-facing first: Strategy or Ghostwriter?",
 ];
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<\/?(ul|ol)[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function formatTime(isoString: string): string {
   if (!isoString) return "";
   try {
@@ -298,7 +316,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           <div className="bg-slate-800/50 rounded-lg p-4 space-y-2">
             <div className="text-xs text-slate-500">{googleData.gmail.geminiSummary.date}</div>
             <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
-              {googleData.gmail.geminiSummary.body}
+              {stripHtml(googleData.gmail.geminiSummary.body)}
             </p>
           </div>
         ) : (
