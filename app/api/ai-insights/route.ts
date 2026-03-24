@@ -153,7 +153,9 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const body: IncomingData = await request.json();
+  const bodyRaw = await request.json();
+  const { model: requestedModel, ...body } = bodyRaw as IncomingData & { model?: string };
+  const selectedModel = requestedModel ?? "openai/gpt-4o-mini";
   const prompt = buildPrompt(body);
 
   try {
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
           "X-Title": "AI Wingman Dashboard",
         },
         body: JSON.stringify({
-          model: "openai/gpt-4o-mini",
+          model: selectedModel,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.6,
           max_tokens: 900,
@@ -208,7 +210,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Non-JSON AI response", raw: rawContent.slice(0, 300) });
     }
     const insights = JSON.parse(match[0]);
-    return NextResponse.json({ ok: true, insights, toolsUsed: {
+    return NextResponse.json({ ok: true, insights, model: selectedModel, toolsUsed: {
       gmail: !!(body.gmail?.connected),
       calendar: !!(body.calendar?.connected),
       telegram: !!(body.telegram?.connected),

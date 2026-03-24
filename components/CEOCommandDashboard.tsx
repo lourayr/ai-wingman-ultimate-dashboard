@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Brain,
   Mail,
@@ -17,6 +18,7 @@ import {
   DollarSign,
   Link2,
   RefreshCw,
+  ChevronDown as SelectIcon,
 } from "lucide-react";
 import Navigation from "./Navigation";
 
@@ -121,6 +123,21 @@ const DECISIONS = [
   "Should I run paid ads for Shadow Operator this week?",
   "Do I need a VA for Treasures fulfillment?",
   "Which GPT gets client-facing first: Strategy or Ghostwriter?",
+  "Am I on track for AI Wingman's $25K/month goal — what's the gap?",
+];
+
+// OpenRouter model options — stored in localStorage as user preference
+const MODEL_OPTIONS: Array<{ id: string; label: string; note?: string }> = [
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", note: "fast + cheap" },
+  { id: "openrouter/auto", label: "Auto (OpenRouter picks)", note: "best available" },
+  { id: "x-ai/grok-3-beta", label: "Grok 3 (xAI)", note: "real-time data" },
+  { id: "google/gemini-2.5-pro-preview", label: "Gemini 2.5 Pro", note: "1M context" },
+  { id: "deepseek/deepseek-r1", label: "DeepSeek R1", note: "free / reasoning" },
+  { id: "deepseek/deepseek-chat", label: "DeepSeek V3.2", note: "~$0.28/1M" },
+  { id: "meta-llama/llama-4-scout", label: "Llama 4 Scout", note: "10M context" },
+  { id: "qwen/qwen3-235b-a22b", label: "Qwen3-235B", note: "MoE + thinking" },
+  { id: "google/gemini-flash-1.5", label: "Gemini Flash", note: "budget speed" },
+  { id: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", note: "via OpenRouter" },
 ];
 
 // ── Wingman Intelligence Engine ──────────────────────────────────────────────
@@ -328,10 +345,20 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
   const [aiInsights, setAiInsights] = useState<AiInsight[]>([]);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiModel, setAiModel] = useState<string>("openai/gpt-4o-mini");
+  const [aiModelUsed, setAiModelUsed] = useState<string | null>(null);
+  const [decisions, setDecisions] = useState<string[]>(DECISIONS);
+  const [loadingDecisions, setLoadingDecisions] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Persist AI model choice across sessions
+  useEffect(() => {
+    const saved = localStorage.getItem("ai_model_pref");
+    if (saved) setAiModel(saved);
   }, []);
 
   const fetchGoogleData = useCallback(async () => {
@@ -379,6 +406,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: aiModel,
           gmail: googleData.gmail,
           calendar: googleData.calendar,
           clients,
@@ -390,7 +418,8 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       const data = await res.json();
       if (data.ok) {
         setAiInsights(data.insights);
-        sessionStorage.setItem("ai_insights_cache", JSON.stringify({ insights: data.insights, ts: Date.now() }));
+        setAiModelUsed(data.model ?? aiModel);
+        sessionStorage.setItem("ai_insights_cache", JSON.stringify({ insights: data.insights, model: data.model, ts: Date.now() }));
       } else {
         setAiError(data.error ?? "Failed to generate insights");
       }
@@ -400,6 +429,27 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       setGeneratingAI(false);
     }
   }, [googleData, clients]);
+
+  const fetchDecisions = useCallback(async () => {
+    setLoadingDecisions(true);
+    try {
+      const res = await fetch("/api/decision-queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clients,
+          gmailImportantCount: googleData.gmail.importantCount,
+          gmailOrderCount: googleData.gmail.orderCount,
+          calendarEventCount: googleData.calendar.events.length,
+          asanaOverdue: googleData.asana.summary?.overdue,
+          asanaOpen: googleData.asana.summary?.open,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.decisions?.length > 0) setDecisions(data.decisions);
+    } catch { /* keep static fallback */ }
+    finally { setLoadingDecisions(false); }
+  }, [clients, googleData]);
 
   useEffect(() => {
     fetchGoogleData();
@@ -420,6 +470,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         // Use cache if it's less than 30 minutes old
         if (Date.now() - ts < 30 * 60 * 1000 && insights?.length > 0) {
           setAiInsights(insights);
+          if (cached && JSON.parse(cached).model) setAiModelUsed(JSON.parse(cached).model);
           setAutoTriggered(true);
           return;
         }
@@ -592,6 +643,109 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         </button>
       </div>
 
+      {/* AI Intelligence Report — collapsed by default, auto-opens when insights are ready */}
+      <Section
+        title="AI Intelligence Report"
+        icon={Brain}
+        badge={aiInsights.length > 0 ? `${aiInsights.length} insights · ${MODEL_OPTIONS.find(m => m.id === (aiModelUsed ?? aiModel))?.label ?? aiModelUsed ?? aiModel}` : generatingAI ? "generating…" : undefined}
+        defaultOpen={false}
+      >
+        {/* Model selector */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-slate-500 text-xs shrink-0">Model:</span>
+          <div className="relative flex-1 max-w-xs">
+            <select
+              value={aiModel}
+              onChange={(e) => {
+                setAiModel(e.target.value);
+                localStorage.setItem("ai_model_pref", e.target.value);
+              }}
+              className="w-full appearance-none bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-1.5 pr-7 focus:outline-none focus:border-purple-500/50 cursor-pointer"
+            >
+              {MODEL_OPTIONS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}{m.note ? ` — ${m.note}` : ""}
+                </option>
+              ))}
+            </select>
+            <SelectIcon className="w-3 h-3 text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+
+        {aiInsights.length === 0 && !generatingAI && !aiError && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { name: "Gmail", on: googleData.gmail.connected },
+                { name: "Calendar", on: googleData.calendar.connected },
+                { name: "Telegram", on: googleData.telegram.connected },
+                { name: "Asana", on: googleData.asana.connected },
+                { name: "Notion", on: googleData.notion.connected },
+                { name: `${clients.length} Clients`, on: clients.length > 0 },
+              ].map(({ name, on }) => (
+                <span key={name} className={`text-xs px-2 py-0.5 rounded-full border ${on ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-slate-800 text-slate-600 border-slate-700"}`}>
+                  {on ? "✓" : "–"} {name}
+                </span>
+              ))}
+            </div>
+            <p className="text-slate-400 text-sm">
+              AI synthesizes all connected tools and surfaces cross-tool insights no single app can show.
+              Auto-runs on load when Gmail is connected.
+            </p>
+            <button
+              onClick={generateAIReport}
+              disabled={!googleData.gmail.connected && !googleData.calendar.connected}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Zap className="w-4 h-4" />
+              Generate AI Report
+            </button>
+            {!googleData.gmail.connected && (
+              <p className="text-slate-500 text-xs">Connect at least Gmail to enable AI analysis.</p>
+            )}
+          </div>
+        )}
+        {generatingAI && (
+          <div className="flex items-center gap-3 py-4">
+            <RefreshCw className="w-4 h-4 text-purple-400 animate-spin" />
+            <span className="text-slate-400 text-sm">Analyzing across all tools with {MODEL_OPTIONS.find(m => m.id === aiModel)?.label ?? aiModel}…</span>
+          </div>
+        )}
+        {aiError && (
+          <div className="space-y-2">
+            <p className="text-red-400 text-sm">{aiError}</p>
+            <button onClick={generateAIReport} className="text-purple-400 text-xs hover:underline">Try again</button>
+          </div>
+        )}
+        {aiInsights.length > 0 && (
+          <div className="space-y-3">
+            {aiInsights.map((insight, i) => (
+              <div key={i} className={`rounded-lg px-4 py-3 space-y-1.5 ${insight.priority === "high" ? "bg-red-500/5 border border-red-500/20" : insight.priority === "medium" ? "bg-amber-500/5 border border-amber-500/20" : "bg-slate-800/40 border border-slate-700/50"}`}>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-1.5 py-0.5 rounded uppercase font-bold tracking-wide ${insight.type === "revenue" ? "bg-green-500/20 text-green-400" : insight.type === "risk" ? "bg-red-500/20 text-red-400" : insight.type === "client" ? "bg-purple-500/20 text-purple-400" : insight.type === "opportunity" ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-700 text-slate-400"}`}>
+                    {insight.type}
+                  </span>
+                  <span className={`text-xs font-medium ${insight.priority === "high" ? "text-red-400" : insight.priority === "medium" ? "text-amber-400" : "text-slate-500"}`}>
+                    {insight.priority}
+                  </span>
+                </div>
+                <p className="text-slate-200 text-sm leading-snug">{insight.text}</p>
+                <p className="text-slate-400 text-xs">→ {insight.action}</p>
+              </div>
+            ))}
+            <div className="flex items-center gap-3 pt-1">
+              <button onClick={generateAIReport} disabled={generatingAI} className="text-slate-500 hover:text-purple-400 text-xs flex items-center gap-1 transition-colors">
+                <RefreshCw className={`w-3 h-3 ${generatingAI ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+              {aiModelUsed && (
+                <span className="text-slate-600 text-xs">via {MODEL_OPTIONS.find(m => m.id === aiModelUsed)?.label ?? aiModelUsed}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </Section>
+
       {/* Morning Brief */}
       <Section title="Morning Brief" icon={Brain} badge="AI">
         {googleData.gmail.geminiSummary ? (
@@ -668,9 +822,24 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           <div className="space-y-3">
             {googleData.gmail.importantMessages.map((msg) => (
               <div key={msg.id} className="bg-slate-800/50 rounded-lg p-3 space-y-1">
-                <div className="text-slate-200 text-sm font-medium">{msg.subject}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-slate-200 text-sm font-medium leading-snug">{msg.subject}</div>
+                  {msg.date && (
+                    <span className="text-slate-600 text-xs shrink-0 mt-0.5">
+                      {(() => {
+                        try {
+                          const d = new Date(msg.date);
+                          const isToday = d.toDateString() === new Date().toDateString();
+                          return isToday
+                            ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                            : d.toLocaleDateString([], { month: "short", day: "numeric" });
+                        } catch { return msg.date; }
+                      })()}
+                    </span>
+                  )}
+                </div>
                 <div className="text-slate-400 text-xs">{msg.from}</div>
-                <div className="text-slate-500 text-xs">{msg.snippet}</div>
+                <div className="text-slate-500 text-xs leading-relaxed">{msg.snippet}</div>
               </div>
             ))}
           </div>
@@ -686,14 +855,18 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         {clients.length === 0 ? (
           <div className="text-slate-400 text-sm">No clients yet. Start onboarding.</div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {clients.slice(0, 5).map((c) => (
-              <div key={c.session_id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+              <Link
+                key={c.session_id}
+                href={`/onboarding/summary?session=${c.session_id}`}
+                className="flex items-center gap-3 py-2 px-2 -mx-2 border-b border-slate-800 last:border-0 rounded-lg hover:bg-white/5 transition-colors group"
+              >
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
                   {(c.business_name ?? "?")[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-slate-200 text-sm font-medium truncate">
+                  <div className="text-slate-200 text-sm font-medium truncate group-hover:text-purple-300 transition-colors">
                     {c.business_name ?? "Unnamed"}
                   </div>
                   <div className="text-slate-500 text-xs truncate">{c.email ?? ""}</div>
@@ -707,7 +880,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
                 >
                   {c.status}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -729,15 +902,25 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         </div>
       </Section>
 
-      {/* Decision Queue */}
+      {/* Decision Queue — AI-powered via Grok 3 */}
       <Section title="Decision Queue" icon={AlertCircle} defaultOpen={false}>
-        <div className="space-y-2">
-          {DECISIONS.map((d) => (
-            <div key={d} className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
-              <span className="text-slate-300 text-sm">{d}</span>
-            </div>
-          ))}
+        <div className="space-y-3">
+          <div className="space-y-2">
+            {decisions.map((d, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                <span className="text-slate-300 text-sm">{d}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={fetchDecisions}
+            disabled={loadingDecisions}
+            className="flex items-center gap-1.5 text-slate-500 hover:text-purple-400 text-xs transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${loadingDecisions ? "animate-spin" : ""}`} />
+            {loadingDecisions ? "Asking Grok 3…" : "Regenerate with AI"}
+          </button>
         </div>
       </Section>
 
@@ -918,119 +1101,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         )}
       </Section>
 
-      {/* AI Intelligence Report */}
-      <Section title="AI Intelligence Report" icon={Brain} badge={aiInsights.length > 0 ? `${aiInsights.length} insights` : generatingAI ? "generating…" : undefined} defaultOpen={aiInsights.length > 0}>
-        {aiInsights.length === 0 && !generatingAI && !aiError && (
-          <div className="space-y-3">
-            {/* Show which tools will feed the report */}
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { name: "Gmail", on: googleData.gmail.connected },
-                { name: "Calendar", on: googleData.calendar.connected },
-                { name: "Telegram", on: googleData.telegram.connected },
-                { name: "Asana", on: googleData.asana.connected },
-                { name: "Notion", on: googleData.notion.connected },
-                { name: `${clients.length} Clients`, on: clients.length > 0 },
-              ].map(({ name, on }) => (
-                <span
-                  key={name}
-                  className={`text-xs px-2 py-0.5 rounded-full border ${
-                    on
-                      ? "bg-green-500/10 text-green-400 border-green-500/20"
-                      : "bg-slate-800 text-slate-600 border-slate-700"
-                  }`}
-                >
-                  {on ? "✓" : "–"} {name}
-                </span>
-              ))}
-            </div>
-            <p className="text-slate-400 text-sm">
-              AI reads all connected tools above and surfaces cross-tool insights you can&apos;t see in any single app.
-              Uses OpenRouter (gpt-4o-mini) — ~$0.001/report.
-            </p>
-            <button
-              onClick={generateAIReport}
-              disabled={!googleData.gmail.connected && !googleData.calendar.connected}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Zap className="w-4 h-4" />
-              Generate AI Report
-            </button>
-            {!googleData.gmail.connected && (
-              <p className="text-slate-500 text-xs">Connect at least Gmail to enable AI analysis.</p>
-            )}
-          </div>
-        )}
-        {generatingAI && (
-          <div className="flex items-center gap-3 py-4">
-            <RefreshCw className="w-4 h-4 text-purple-400 animate-spin" />
-            <span className="text-slate-400 text-sm">Analyzing your data across all tools...</span>
-          </div>
-        )}
-        {aiError && (
-          <div className="space-y-2">
-            <p className="text-red-400 text-sm">{aiError}</p>
-            <button onClick={generateAIReport} className="text-purple-400 text-xs hover:underline">
-              Try again
-            </button>
-          </div>
-        )}
-        {aiInsights.length > 0 && (
-          <div className="space-y-3">
-            {aiInsights.map((insight, i) => (
-              <div
-                key={i}
-                className={`rounded-lg px-4 py-3 space-y-1.5 ${
-                  insight.priority === "high"
-                    ? "bg-red-500/5 border border-red-500/20"
-                    : insight.priority === "medium"
-                    ? "bg-amber-500/5 border border-amber-500/20"
-                    : "bg-slate-800/40 border border-slate-700/50"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs px-1.5 py-0.5 rounded uppercase font-bold tracking-wide ${
-                      insight.type === "revenue"
-                        ? "bg-green-500/20 text-green-400"
-                        : insight.type === "risk"
-                        ? "bg-red-500/20 text-red-400"
-                        : insight.type === "client"
-                        ? "bg-purple-500/20 text-purple-400"
-                        : insight.type === "opportunity"
-                        ? "bg-cyan-500/20 text-cyan-400"
-                        : "bg-slate-700 text-slate-400"
-                    }`}
-                  >
-                    {insight.type}
-                  </span>
-                  <span
-                    className={`text-xs font-medium ${
-                      insight.priority === "high"
-                        ? "text-red-400"
-                        : insight.priority === "medium"
-                        ? "text-amber-400"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    {insight.priority}
-                  </span>
-                </div>
-                <p className="text-slate-200 text-sm leading-snug">{insight.text}</p>
-                <p className="text-slate-400 text-xs">→ {insight.action}</p>
-              </div>
-            ))}
-            <button
-              onClick={generateAIReport}
-              disabled={generatingAI}
-              className="text-slate-500 hover:text-purple-400 text-xs flex items-center gap-1 transition-colors"
-            >
-              <RefreshCw className={`w-3 h-3 ${generatingAI ? "animate-spin" : ""}`} />
-              Refresh report
-            </button>
-          </div>
-        )}
-      </Section>
+{/* AI Intelligence Report moved above Morning Brief — see below */}
 
       {/* Discord Intelligence */}
       {(googleData.discord.connected || true) && (
@@ -1088,6 +1159,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
             { name: "Gmail", connected: googleData.gmail.connected, href: "/api/auth/google" },
             { name: "Calendar", connected: googleData.calendar.connected, href: "/api/auth/google" },
             { name: "Telegram", connected: googleData.telegram.connected, href: "#" },
+            { name: "WhatsApp", connected: false, href: "#" },
             { name: "Asana", connected: googleData.asana.connected, href: "#" },
             { name: "Notion", connected: googleData.notion.connected, href: "#" },
             { name: "Discord", connected: googleData.discord.connected, href: "#" },
