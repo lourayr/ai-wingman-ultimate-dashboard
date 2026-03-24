@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Priority: OPENROUTER_API_KEY (gpt-4o-mini) → ANTHROPIC_API_KEY (claude-haiku)
-// Accepts full cross-tool payload: Gmail + Calendar + Clients + Slack + Asana + Notion
+// Accepts full cross-tool payload: Gmail + Calendar + Clients + Telegram + Asana + Notion
 
 interface IncomingData {
   gmail?: {
@@ -22,12 +22,11 @@ interface IncomingData {
     investment_capacity?: string | null;
     updated_at?: string;
   }>;
-  slack?: {
+  telegram?: {
     connected?: boolean;
-    channels?: Array<{
-      name: string;
-      messages: Array<{ text: string; date: string }>;
-      lastActivity?: string;
+    chats?: Array<{
+      title: string;
+      messages: Array<{ text: string; date: string; sender: string }>;
     }>;
   };
   asana?: {
@@ -46,7 +45,7 @@ function buildPrompt(data: IncomingData): string {
   const gmail = data.gmail ?? {};
   const cal = data.calendar ?? {};
   const clients = data.clients ?? [];
-  const slack = data.slack ?? {};
+  const telegram = data.telegram ?? {};
   const asana = data.asana ?? {};
   const notion = data.notion ?? {};
 
@@ -68,13 +67,13 @@ function buildPrompt(data: IncomingData): string {
     .map((c) => `  • ${c.business_name ?? "Unnamed"} [${c.status}] cap:${c.investment_capacity ?? "?"} updated:${c.updated_at ? new Date(c.updated_at).toLocaleDateString() : "?"}`)
     .join("\n");
 
-  const slackSection = slack.connected
-    ? `SLACK (${slack.channels?.length ?? 0} channels):\n` +
-      (slack.channels ?? [])
-        .map((ch) => `  #${ch.name} — last active: ${ch.lastActivity ?? "unknown"}\n` +
-          (ch.messages ?? []).slice(0, 2).map((m) => `    → "${m.text.slice(0, 120)}" (${m.date})`).join("\n"))
+  const telegramSection = telegram.connected
+    ? `TELEGRAM (${telegram.chats?.length ?? 0} chats):\n` +
+      (telegram.chats ?? [])
+        .map((ch) => `  ${ch.title}:\n` +
+          (ch.messages ?? []).slice(0, 2).map((m) => `    → "${m.text.slice(0, 120)}" (${m.sender}, ${m.date})`).join("\n"))
         .join("\n")
-    : "SLACK: not connected";
+    : "TELEGRAM: not connected";
 
   const asanaSection = asana.connected
     ? `ASANA: ${asana.summary?.open ?? 0} open tasks, ${asana.summary?.overdue ?? 0} overdue\n` +
@@ -119,7 +118,7 @@ ${meetingList || "  (none)"}
 CLIENT PIPELINE — ${clients.length} total (${completeCount} complete, ${draftCount} draft):
 ${clientList || "  (none)"}
 
-${slackSection}
+${telegramSection}
 
 ${asanaSection}
 
@@ -212,7 +211,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, insights, toolsUsed: {
       gmail: !!(body.gmail?.connected),
       calendar: !!(body.calendar?.connected),
-      slack: !!(body.slack?.connected),
+      telegram: !!(body.telegram?.connected),
       asana: !!(body.asana?.connected),
       notion: !!(body.notion?.connected),
     }});

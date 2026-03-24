@@ -50,9 +50,9 @@ interface GmailData {
   importantMessages?: ImportantMessage[];
 }
 
-interface SlackMessage { text: string; date: string; time: string; isBot: boolean }
-interface SlackChannel { id: string; name: string; topic: string; messages: SlackMessage[]; lastActivity: string }
-interface SlackData { connected: boolean; channels: SlackChannel[] }
+interface TelegramMsg { id: number; text: string; sender: string; isBot: boolean; date: string; time: string }
+interface TelegramChat { id: number; title: string; type: string; messages: TelegramMsg[] }
+interface TelegramData { connected: boolean; chats: TelegramChat[] }
 
 interface AsanaTask { gid: string; name: string; completed: boolean; due_on: string | null; projects: Array<{ name: string }> }
 interface AsanaProject { gid: string; name: string; current_status?: { text: string; color: string } | null }
@@ -88,7 +88,7 @@ interface GoogleData {
   gmail: GmailData;
   calendar: { connected: boolean; events: CalendarEvent[] };
   discord: { connected: boolean; channels: DiscordChannel[] };
-  slack: SlackData;
+  telegram: TelegramData;
   asana: AsanaData;
   notion: NotionData;
 }
@@ -318,7 +318,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
     gmail: { connected: false },
     calendar: { connected: false, events: [] },
     discord: { connected: false, channels: [] },
-    slack: { connected: false, channels: [] },
+    telegram: { connected: false, chats: [] },
     asana: { connected: false, tasks: [], projects: [], summary: { total: 0, open: 0, overdue: 0, completed: 0 } },
     notion: { connected: false, pages: [] },
   });
@@ -337,28 +337,28 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
   const fetchGoogleData = useCallback(async () => {
     setLoadingGoogle(true);
     try {
-      const [gmailRes, calRes, discordRes, slackRes, asanaRes, notionRes] = await Promise.all([
+      const [gmailRes, calRes, discordRes, telegramRes, asanaRes, notionRes] = await Promise.all([
         fetch("/api/gmail"),
         fetch("/api/calendar"),
         fetch("/api/discord"),
-        fetch("/api/slack"),
+        fetch("/api/telegram"),
         fetch("/api/asana"),
         fetch("/api/notion"),
       ]);
       const gmail = await gmailRes.json();
       const calendar = await calRes.json();
       const discord = await discordRes.json();
-      const slack = await slackRes.json();
+      const telegram = await telegramRes.json();
       const asana = await asanaRes.json();
       const notion = await notionRes.json();
-      setGoogleData({ gmail, calendar, discord, slack, asana, notion });
+      setGoogleData({ gmail, calendar, discord, telegram, asana, notion });
 
-      // Calm score: more connected tools = less chaos
+      // Calm score: more connected tools + inbox health
       let score = 50;
       if (gmail.connected) score += 12;
       if (calendar.connected) score += 8;
       if (!gmail.importantCount || gmail.importantCount < 5) score += 8;
-      if (slack.connected) score += 5;
+      if (telegram.connected) score += 5;
       if (asana.connected) score += 5;
       if (notion.connected) score += 4;
       if (discord.connected) score += 4;
@@ -382,7 +382,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           gmail: googleData.gmail,
           calendar: googleData.calendar,
           clients,
-          slack: googleData.slack,
+          telegram: googleData.telegram,
           asana: googleData.asana,
           notion: googleData.notion,
         }),
@@ -390,6 +390,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       const data = await res.json();
       if (data.ok) {
         setAiInsights(data.insights);
+        sessionStorage.setItem("ai_insights_cache", JSON.stringify({ insights: data.insights, ts: Date.now() }));
       } else {
         setAiError(data.error ?? "Failed to generate insights");
       }
@@ -407,6 +408,29 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       .then((d) => { if (d.ok) setClients(d.submissions); })
       .catch(() => {});
   }, [fetchGoogleData]);
+
+  // Auto-generate AI brief on load (sessionStorage cache — avoids re-calling on every render)
+  const [autoTriggered, setAutoTriggered] = useState(false);
+  useEffect(() => {
+    if (autoTriggered) return;
+    const cached = sessionStorage.getItem("ai_insights_cache");
+    if (cached) {
+      try {
+        const { insights, ts } = JSON.parse(cached);
+        // Use cache if it's less than 30 minutes old
+        if (Date.now() - ts < 30 * 60 * 1000 && insights?.length > 0) {
+          setAiInsights(insights);
+          setAutoTriggered(true);
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+    // Auto-trigger once data is loaded and Gmail is connected
+    if (googleData.gmail.connected && !generatingAI && aiInsights.length === 0) {
+      setAutoTriggered(true);
+      generateAIReport();
+    }
+  }, [googleData.gmail.connected, generatingAI, aiInsights.length, autoTriggered, generateAIReport]);
 
   // Re-fetch after Google OAuth callback
   useEffect(() => {
@@ -455,7 +479,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           },
           {
             label: "Tools Live",
-            value: [googleData.gmail.connected, googleData.calendar.connected, googleData.slack.connected, googleData.asana.connected, googleData.notion.connected, googleData.discord.connected].filter(Boolean).length + "/6",
+            value: [googleData.gmail.connected, googleData.calendar.connected, googleData.telegram.connected, googleData.asana.connected, googleData.notion.connected, googleData.discord.connected].filter(Boolean).length + "/6",
             icon: Zap,
             color: "text-cyan-400",
           },
@@ -717,27 +741,28 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         </div>
       </Section>
 
-      {/* Slack */}
+      {/* Telegram */}
       <Section
-        title="Slack"
+        title="Telegram"
         icon={Zap}
-        badge={googleData.slack.connected ? String(googleData.slack.channels.length) + " channels" : undefined}
+        badge={googleData.telegram.connected ? `${googleData.telegram.chats.length} chats` : undefined}
         defaultOpen={false}
       >
-        {googleData.slack.connected && googleData.slack.channels.length > 0 ? (
+        {googleData.telegram.connected && googleData.telegram.chats.length > 0 ? (
           <div className="space-y-4">
-            {googleData.slack.channels.map((ch) => (
-              <div key={ch.id} className="space-y-2">
+            {googleData.telegram.chats.map((chat) => (
+              <div key={chat.id} className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-300 text-sm font-medium">#{ch.name}</span>
-                  <span className="text-slate-600 text-xs">last: {ch.lastActivity}</span>
-                  {ch.topic && <span className="text-slate-500 text-xs truncate hidden sm:block">{ch.topic.slice(0, 60)}</span>}
+                  <span className="text-slate-300 text-sm font-medium">{chat.title}</span>
+                  <span className="text-slate-600 text-xs capitalize">{chat.type}</span>
                 </div>
-                {ch.messages.slice(0, 3).map((msg, i) => (
+                {chat.messages.slice(0, 3).map((msg, i) => (
                   <div key={i} className="bg-slate-800/40 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-slate-500 text-xs">{msg.date} {msg.time}</span>
-                      {msg.isBot && <span className="text-cyan-400 text-xs">bot</span>}
+                      <span className={`text-xs font-medium ${msg.isBot ? "text-cyan-400" : "text-purple-400"}`}>
+                        {msg.isBot ? "🤖" : "👤"} {msg.sender}
+                      </span>
+                      <span className="text-slate-600 text-xs">{msg.date} {msg.time}</span>
                     </div>
                     <p className="text-slate-300 text-xs leading-relaxed">{msg.text}</p>
                   </div>
@@ -748,19 +773,41 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         ) : (
           <div className="space-y-3">
             <p className="text-slate-400 text-sm">
-              Connect Slack to see channel messages here — even older messages are useful for the AI synthesis.
+              Connect Telegram to pull in messages from your groups and channels — feeds into AI cross-tool synthesis.
             </p>
             <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
               <p className="text-slate-300 font-medium">Setup (3 min):</p>
-              <p>1. api.slack.com/apps → Create New App → From Scratch</p>
-              <p>2. OAuth &amp; Permissions → Scopes → Add: <code className="text-purple-300">channels:history channels:read groups:history</code></p>
-              <p>3. Install to Workspace → copy <strong>Bot User OAuth Token</strong> (xoxb-...)</p>
-              <p>4. Invite bot to channels: <code className="text-purple-300">/invite @YourBotName</code></p>
-              <p>5. Vercel env: <code className="text-purple-300">SLACK_BOT_TOKEN=xoxb-...</code></p>
-              <p className="text-slate-500">Optional: <code className="text-purple-300">SLACK_CHANNEL_IDS</code> (comma-separated) — otherwise fetches all channels the bot is in</p>
+              <p>1. Open @BotFather in Telegram → <code className="text-purple-300">/newbot</code> → follow prompts → copy the token</p>
+              <p>2. Add the bot to your group/channel as admin</p>
+              <p>3. Get your chat ID: message the bot, then visit <code className="text-purple-300">api.telegram.org/bot&#123;TOKEN&#125;/getUpdates</code> — find <code className="text-purple-300">&quot;chat&quot;:&#123;&quot;id&quot;:-100...&#125;</code></p>
+              <p>4. Vercel env: <code className="text-purple-300">TELEGRAM_BOT_TOKEN=your-token</code></p>
+              <p className="text-slate-500">Optional: <code className="text-purple-300">TELEGRAM_CHAT_IDS</code> (comma-separated) — filters to specific chats</p>
             </div>
           </div>
         )}
+      </Section>
+
+      {/* WhatsApp */}
+      <Section title="WhatsApp" icon={Zap} defaultOpen={false}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
+              Ready to connect
+            </span>
+          </div>
+          <p className="text-slate-400 text-sm">
+            Pull WhatsApp Business messages into the AI synthesis — see client conversations alongside emails and Telegram.
+          </p>
+          <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
+            <p className="text-slate-300 font-medium">Setup via Meta Cloud API:</p>
+            <p>1. Create a Meta Developer account at <code className="text-purple-300">developers.facebook.com</code></p>
+            <p>2. Create an App → Add WhatsApp product → Set up WhatsApp Business</p>
+            <p>3. Generate a permanent System User token in Business Settings → Users → System Users</p>
+            <p>4. Get your Phone Number ID from the WhatsApp dashboard</p>
+            <p>5. Vercel env: <code className="text-purple-300">WHATSAPP_TOKEN=your-token</code> + <code className="text-purple-300">WHATSAPP_PHONE_NUMBER_ID=your-id</code></p>
+            <p className="text-slate-500">Note: Meta Cloud API requires a verified Business account for production use.</p>
+          </div>
+        </div>
       </Section>
 
       {/* Asana */}
@@ -872,7 +919,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       </Section>
 
       {/* AI Intelligence Report */}
-      <Section title="AI Intelligence Report" icon={Brain} defaultOpen={false}>
+      <Section title="AI Intelligence Report" icon={Brain} badge={aiInsights.length > 0 ? `${aiInsights.length} insights` : generatingAI ? "generating…" : undefined} defaultOpen={aiInsights.length > 0}>
         {aiInsights.length === 0 && !generatingAI && !aiError && (
           <div className="space-y-3">
             {/* Show which tools will feed the report */}
@@ -880,7 +927,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
               {[
                 { name: "Gmail", on: googleData.gmail.connected },
                 { name: "Calendar", on: googleData.calendar.connected },
-                { name: "Slack", on: googleData.slack.connected },
+                { name: "Telegram", on: googleData.telegram.connected },
                 { name: "Asana", on: googleData.asana.connected },
                 { name: "Notion", on: googleData.notion.connected },
                 { name: `${clients.length} Clients`, on: clients.length > 0 },
@@ -1040,7 +1087,7 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           {[
             { name: "Gmail", connected: googleData.gmail.connected, href: "/api/auth/google" },
             { name: "Calendar", connected: googleData.calendar.connected, href: "/api/auth/google" },
-            { name: "Slack", connected: googleData.slack.connected, href: "#" },
+            { name: "Telegram", connected: googleData.telegram.connected, href: "#" },
             { name: "Asana", connected: googleData.asana.connected, href: "#" },
             { name: "Notion", connected: googleData.notion.connected, href: "#" },
             { name: "Discord", connected: googleData.discord.connected, href: "#" },

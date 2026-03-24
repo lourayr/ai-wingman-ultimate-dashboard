@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Target, Copy, CheckCircle, ExternalLink, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Target, Copy, CheckCircle, ExternalLink, AlertCircle, ChevronDown, ChevronUp, Zap, Loader2 } from "lucide-react";
 import Navigation from "./Navigation";
 
 interface ClientData {
@@ -155,6 +155,7 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<Record<string, SectionTab>>({});
   const [copied, setCopied] = useState<string | null>(null);
+  const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
 
   useEffect(() => {
     setLoading(true);
@@ -172,6 +173,27 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
       setCopied(key);
       setTimeout(() => setCopied(null), 2000);
     });
+  };
+
+  const generateGamma = async (c: ClientData) => {
+    const id = c.session_id;
+    setGammaJobs((prev) => ({ ...prev, [id]: { status: "sending" } }));
+    const brief = buildFullProfileBlock(c);
+    try {
+      const res = await fetch("/api/openclaw/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "gamma_strategy", clientName: c.business_name ?? "Unknown Client", brief }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setGammaJobs((prev) => ({ ...prev, [id]: { status: "queued", jobId: data.jobId } }));
+      } else {
+        setGammaJobs((prev) => ({ ...prev, [id]: { status: "error", error: data.error ?? "Queue failed" } }));
+      }
+    } catch (err) {
+      setGammaJobs((prev) => ({ ...prev, [id]: { status: "error", error: String(err) } }));
+    }
   };
 
   const getSection = (id: string): SectionTab => activeSection[id] ?? "plan90";
@@ -274,6 +296,40 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
                         )}
                       </a>
                     ))}
+                    {/* Gamma Strategy via OpenClaw */}
+                    {(() => {
+                      const gj = gammaJobs[c.session_id];
+                      const isSending = gj?.status === "sending";
+                      const isQueued = gj?.status === "queued";
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => generateGamma(c)}
+                            disabled={isSending || isQueued}
+                            className={`flex items-center gap-1.5 border text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                              isQueued
+                                ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
+                                : "bg-cyan-600/20 hover:bg-cyan-600/30 border-cyan-500/30 text-cyan-300 disabled:opacity-50"
+                            }`}
+                          >
+                            {isSending ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : isQueued ? (
+                              <CheckCircle className="w-3.5 h-3.5" />
+                            ) : (
+                              <Zap className="w-3.5 h-3.5" />
+                            )}
+                            {isQueued ? "Gamma Queued" : isSending ? "Sending…" : "Generate Gamma"}
+                          </button>
+                          {gj?.status === "error" && (
+                            <p className="text-red-400 text-xs">{gj.error}</p>
+                          )}
+                          {isQueued && (
+                            <p className="text-slate-500 text-xs">OpenClaw will process &amp; post result</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Section Tabs */}
