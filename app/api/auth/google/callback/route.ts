@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { exchangeCodeForTokens } from "@/lib/google-auth";
-import sql from "@/lib/db";
+import { getDb } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
   cookieStore.delete("google-oauth-state");
 
   try {
+    const sql = getDb();
     const tokens = await exchangeCodeForTokens(code);
 
     // Ensure user_tokens table exists

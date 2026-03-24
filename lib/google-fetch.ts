@@ -1,4 +1,4 @@
-import sql from "./db";
+import { getDb } from "./db";
 import { refreshAccessToken } from "./google-auth";
 
 const REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
@@ -7,6 +7,7 @@ export async function getGoogleAccessToken(
   userId = "ray"
 ): Promise<string | null> {
   try {
+    const sql = getDb();
     const rows = await sql`
       SELECT access_token, refresh_token, expires_at
       FROM user_tokens

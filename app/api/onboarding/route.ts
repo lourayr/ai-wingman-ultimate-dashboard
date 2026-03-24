@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import { getDb } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const sql = getDb();
     const rows = await sql`
       SELECT * FROM onboarding_submissions WHERE session_id = ${sessionId} LIMIT 1
     `;
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const sql = getDb();
     const body = await request.json();
     const {
       sessionId,

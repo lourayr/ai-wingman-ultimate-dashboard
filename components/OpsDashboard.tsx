@@ -1,10 +1,11 @@
 import { Settings, Users, TrendingUp, CheckCircle, Clock } from "lucide-react";
 import Navigation from "./Navigation";
-import sql from "@/lib/db";
+import { getDb } from "@/lib/db";
 import Link from "next/link";
 
 async function getClients() {
   try {
+    const sql = getDb();
     const rows = await sql`
       SELECT id, session_id, business_name, email, status, industry_model, updated_at
       FROM onboarding_submissions
