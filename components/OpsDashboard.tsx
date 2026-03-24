@@ -1,4 +1,4 @@
-import { Settings, Users, TrendingUp, CheckCircle, Clock } from "lucide-react";
+import { Settings, Users, TrendingUp, CheckCircle, Clock, Zap, Radio } from "lucide-react";
 import Navigation from "./Navigation";
 import { getDb } from "@/lib/db";
 import Link from "next/link";
@@ -17,8 +17,24 @@ async function getClients() {
   }
 }
 
+async function getOpenClawIntel() {
+  try {
+    const sql = getDb();
+    const rows = await sql`
+      SELECT id, source, title, content, metadata, created_at
+      FROM openclaw_intel
+      ORDER BY created_at DESC
+      LIMIT 15
+    `;
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
 export default async function OpsDashboard() {
   const clients = await getClients();
+  const intelItems = await getOpenClawIntel();
 
   const total = clients.length;
   const complete = clients.filter((c) => c.status === "complete").length;
@@ -84,7 +100,8 @@ export default async function OpsDashboard() {
             {[
               { href: "/api/onboarding/setup", label: "Run DB Setup", external: true },
               { href: "/api/tokens/setup", label: "Setup Token Table", external: true },
-              { href: "/api/test-db", label: "Test DB Connection", external: true },
+              { href: "/api/intel/setup", label: "Setup OpenClaw Table", external: true },
+              { href: "/api/test-db", label: "Test DB", external: true },
               { href: "/api/auth/google", label: "Connect Google", external: true },
             ].map(({ href, label, external }) => (
               <a
@@ -98,6 +115,71 @@ export default async function OpsDashboard() {
               </a>
             ))}
           </div>
+        </div>
+
+        {/* OpenClaw Intelligence Feed */}
+        <div className="glass rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-800 flex items-center gap-2">
+            <Radio className="w-4 h-4 text-cyan-400" />
+            <h2 className="font-semibold text-slate-200 flex-1">OpenClaw Intelligence Feed</h2>
+            <span className="text-xs text-slate-500">{intelItems.length} items</span>
+          </div>
+
+          {intelItems.length === 0 ? (
+            <div className="p-5 space-y-4">
+              <p className="text-slate-400 text-sm">
+                No data ingested yet. Configure OpenClaw to push data here via browser relay.
+              </p>
+
+              <div className="bg-slate-800/60 rounded-xl p-4 space-y-3 text-sm">
+                <p className="text-slate-200 font-medium flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-purple-400" />
+                  OpenClaw Skill Setup
+                </p>
+                <p className="text-slate-400 text-xs">
+                  Add this skill to OpenClaw. It will browse your tools and POST data to this dashboard automatically.
+                  Set <code className="text-purple-300">OPENCLAW_WEBHOOK_KEY</code> in Vercel for auth (optional but recommended).
+                </p>
+                <div className="bg-slate-900 rounded-lg p-3 text-xs font-mono text-slate-300 space-y-1 overflow-x-auto">
+                  <p className="text-slate-500"># OpenClaw skill — paste into skill editor</p>
+                  <p>name: Dashboard Relay</p>
+                  <p>trigger: on demand</p>
+                  <p>steps:</p>
+                  <p>{"  "}1. Browse synthesise.ai/dashboard → copy activity summary</p>
+                  <p>{"  "}2. POST to {"{YOUR_VERCEL_URL}"}/api/openclaw/ingest</p>
+                  <p>{"     "}body: {"{ source: 'synthesize', title: 'Activity', content: <scraped> }"}</p>
+                  <p>{"  "}3. Browse ghostwriteros.ai DNAs page → copy DNA list</p>
+                  <p>{"  "}4. POST {"{ source: 'ghostwriteros', title: 'DNAs', content: <scraped> }"}</p>
+                  <p>{"  "}5. Browse gamma.ai recent → copy recent decks/activity</p>
+                  <p>{"  "}6. POST {"{ source: 'gamma', title: 'Recent', content: <scraped> }"}</p>
+                </div>
+                <p className="text-slate-500 text-xs">
+                  Webhook URL: <code className="text-cyan-400">/api/openclaw/ingest</code> — accepts POST with body {"{ source, title, content, metadata }"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-800">
+              {intelItems.map((item) => (
+                <div key={String(item.id)} className="px-5 py-4 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium">
+                      {String(item.source)}
+                    </span>
+                    <span className="text-slate-200 text-sm font-medium flex-1 truncate">
+                      {String(item.title ?? item.source)}
+                    </span>
+                    <span className="text-slate-500 text-xs shrink-0">
+                      {new Date(String(item.created_at)).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs leading-relaxed line-clamp-3">
+                    {String(item.content).slice(0, 300)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Client List */}

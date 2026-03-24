@@ -50,9 +50,32 @@ interface GmailData {
   importantMessages?: ImportantMessage[];
 }
 
+interface DiscordMessage {
+  id: string;
+  content: string;
+  author: string;
+  isBot: boolean;
+  timestamp: string;
+}
+
+interface DiscordChannel {
+  id: string;
+  name: string;
+  topic: string;
+  messages: DiscordMessage[];
+}
+
+interface AiInsight {
+  text: string;
+  action: string;
+  priority: "high" | "medium" | "low";
+  type: "revenue" | "attention" | "risk" | "opportunity" | "client";
+}
+
 interface GoogleData {
   gmail: GmailData;
   calendar: { connected: boolean; events: CalendarEvent[] };
+  discord: { connected: boolean; channels: DiscordChannel[] };
 }
 
 interface ClientRow {
@@ -279,10 +302,14 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
   const [googleData, setGoogleData] = useState<GoogleData>({
     gmail: { connected: false },
     calendar: { connected: false, events: [] },
+    discord: { connected: false, channels: [] },
   });
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [calmScore, setCalmScore] = useState(72);
+  const [aiInsights, setAiInsights] = useState<AiInsight[]>([]);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -292,19 +319,22 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
   const fetchGoogleData = useCallback(async () => {
     setLoadingGoogle(true);
     try {
-      const [gmailRes, calRes] = await Promise.all([
+      const [gmailRes, calRes, discordRes] = await Promise.all([
         fetch("/api/gmail"),
         fetch("/api/calendar"),
+        fetch("/api/discord"),
       ]);
       const gmail = await gmailRes.json();
       const calendar = await calRes.json();
-      setGoogleData({ gmail, calendar });
+      const discord = await discordRes.json();
+      setGoogleData({ gmail, calendar, discord });
 
       // Update calm score based on data
       let score = 60;
       if (gmail.connected) score += 15;
       if (calendar.connected) score += 10;
       if (!gmail.importantCount || gmail.importantCount < 5) score += 10;
+      if (discord.connected) score += 5;
       setCalmScore(Math.min(score, 100));
     } catch {
       // ignore
@@ -312,6 +342,32 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
       setLoadingGoogle(false);
     }
   }, []);
+
+  const generateAIReport = useCallback(async () => {
+    setGeneratingAI(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/ai-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gmail: googleData.gmail,
+          calendar: googleData.calendar,
+          clients,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAiInsights(data.insights);
+      } else {
+        setAiError(data.error ?? "Failed to generate insights");
+      }
+    } catch (err) {
+      setAiError(String(err));
+    } finally {
+      setGeneratingAI(false);
+    }
+  }, [googleData, clients]);
 
   useEffect(() => {
     fetchGoogleData();
@@ -630,16 +686,157 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
         </div>
       </Section>
 
+      {/* AI Intelligence Report */}
+      <Section title="AI Intelligence Report" icon={Brain} defaultOpen={false}>
+        {aiInsights.length === 0 && !generatingAI && !aiError && (
+          <div className="space-y-3">
+            <p className="text-slate-400 text-sm">
+              Generate a real-time AI analysis across all your connected tools. Uses your live Gmail,
+              Calendar, and client pipeline data — synthesized by GPT-4o-mini via OpenRouter.
+            </p>
+            <button
+              onClick={generateAIReport}
+              disabled={!googleData.gmail.connected && !googleData.calendar.connected}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Zap className="w-4 h-4" />
+              Generate AI Report
+            </button>
+            {!googleData.gmail.connected && (
+              <p className="text-slate-500 text-xs">Connect Gmail first to enable AI analysis.</p>
+            )}
+          </div>
+        )}
+        {generatingAI && (
+          <div className="flex items-center gap-3 py-4">
+            <RefreshCw className="w-4 h-4 text-purple-400 animate-spin" />
+            <span className="text-slate-400 text-sm">Analyzing your data across all tools...</span>
+          </div>
+        )}
+        {aiError && (
+          <div className="space-y-2">
+            <p className="text-red-400 text-sm">{aiError}</p>
+            <button onClick={generateAIReport} className="text-purple-400 text-xs hover:underline">
+              Try again
+            </button>
+          </div>
+        )}
+        {aiInsights.length > 0 && (
+          <div className="space-y-3">
+            {aiInsights.map((insight, i) => (
+              <div
+                key={i}
+                className={`rounded-lg px-4 py-3 space-y-1.5 ${
+                  insight.priority === "high"
+                    ? "bg-red-500/5 border border-red-500/20"
+                    : insight.priority === "medium"
+                    ? "bg-amber-500/5 border border-amber-500/20"
+                    : "bg-slate-800/40 border border-slate-700/50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded uppercase font-bold tracking-wide ${
+                      insight.type === "revenue"
+                        ? "bg-green-500/20 text-green-400"
+                        : insight.type === "risk"
+                        ? "bg-red-500/20 text-red-400"
+                        : insight.type === "client"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : insight.type === "opportunity"
+                        ? "bg-cyan-500/20 text-cyan-400"
+                        : "bg-slate-700 text-slate-400"
+                    }`}
+                  >
+                    {insight.type}
+                  </span>
+                  <span
+                    className={`text-xs font-medium ${
+                      insight.priority === "high"
+                        ? "text-red-400"
+                        : insight.priority === "medium"
+                        ? "text-amber-400"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {insight.priority}
+                  </span>
+                </div>
+                <p className="text-slate-200 text-sm leading-snug">{insight.text}</p>
+                <p className="text-slate-400 text-xs">→ {insight.action}</p>
+              </div>
+            ))}
+            <button
+              onClick={generateAIReport}
+              disabled={generatingAI}
+              className="text-slate-500 hover:text-purple-400 text-xs flex items-center gap-1 transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${generatingAI ? "animate-spin" : ""}`} />
+              Refresh report
+            </button>
+          </div>
+        )}
+      </Section>
+
+      {/* Discord Intelligence */}
+      {(googleData.discord.connected || true) && (
+        <Section title="Discord Intelligence" icon={Zap} defaultOpen={false}>
+          {googleData.discord.connected && googleData.discord.channels.length > 0 ? (
+            <div className="space-y-4">
+              {googleData.discord.channels.map((ch) => (
+                <div key={ch.id} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-300 text-sm font-medium">#{ch.name}</span>
+                    {ch.topic && <span className="text-slate-500 text-xs truncate">{ch.topic}</span>}
+                  </div>
+                  {ch.messages.slice(0, 3).map((msg) => (
+                    <div key={msg.id} className="bg-slate-800/40 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`text-xs font-medium ${msg.isBot ? "text-cyan-400" : "text-purple-400"}`}
+                        >
+                          {msg.isBot ? "🤖" : "👤"} {msg.author}
+                        </span>
+                        <span className="text-slate-600 text-xs">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 text-xs leading-relaxed">{msg.content}</p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-slate-400 text-sm">
+                Connect Discord to see OpenClaw status updates and channel messages here.
+              </p>
+              <div className="bg-slate-800/50 rounded-lg p-3 space-y-1.5 text-xs text-slate-400">
+                <p className="text-slate-300 font-medium">Setup (2 min):</p>
+                <p>1. Go to discord.com/developers → New Application → Bot → Copy token</p>
+                <p>2. Add bot to your server with Read Messages permission</p>
+                <p>3. Right-click channel → Copy ID (need Developer Mode on)</p>
+                <p>4. Add to Vercel: <code className="text-purple-300">DISCORD_BOT_TOKEN</code> + <code className="text-purple-300">DISCORD_CHANNEL_IDS</code></p>
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
       {/* Tool Connector */}
       <Section title="Tool Connector" icon={Link2} defaultOpen={false}>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {[
             { name: "Gmail", connected: googleData.gmail.connected, href: "/api/auth/google" },
             { name: "Google Calendar", connected: googleData.calendar.connected, href: "/api/auth/google" },
-            { name: "Slack", connected: false, href: "#" },
+            { name: "Discord", connected: googleData.discord.connected, href: "#" },
+            { name: "OpenClaw", connected: false, href: "/ops" },
             { name: "Notion", connected: false, href: "#" },
             { name: "Stripe", connected: false, href: "#" },
-            { name: "HubSpot", connected: false, href: "#" },
           ].map((tool) => (
             <a
               key={tool.name}
