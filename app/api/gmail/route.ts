@@ -23,17 +23,48 @@ function decodeBase64(data: string): string {
   }
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<\/?(ul|ol)[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function getBody(msg: GmailMessage): string {
   const payload = msg.payload;
-  if (!payload) return "";
-  if (payload.body?.data) return decodeBase64(payload.body.data);
-  if (payload.parts) {
-    for (const part of payload.parts) {
-      if (part.mimeType === "text/plain" && part.body?.data) {
-        return decodeBase64(part.body.data);
-      }
+  if (!payload) return msg.snippet ?? "";
+
+  // Collect all parts including nested multipart
+  const allParts: Array<{ mimeType: string; body?: { data?: string } }> = [];
+  if (payload.parts) allParts.push(...payload.parts);
+  if (payload.body?.data) allParts.unshift({ mimeType: "text/html", body: payload.body });
+
+  // Prefer plain text
+  for (const part of allParts) {
+    if (part.mimeType === "text/plain" && part.body?.data) {
+      return decodeBase64(part.body.data).trim();
     }
   }
+
+  // Fall back to HTML — strip tags before returning
+  for (const part of allParts) {
+    if (part.mimeType === "text/html" && part.body?.data) {
+      return stripHtml(decodeBase64(part.body.data));
+    }
+  }
+
   return msg.snippet ?? "";
 }
 
