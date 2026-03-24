@@ -99,6 +99,116 @@ function scoreGPT(tool: typeof GPT_TOOLS[0], data: SubmissionData): number {
   return tool.keywords.filter((k) => text.includes(k)).length;
 }
 
+// ── Tool Chaos Score ─────────────────────────────────────────────────────────
+// Auto-calculates operational chaos from intake data.
+// This is the monetization closer from the demo playbook.
+
+interface ChaosResult {
+  score: number;
+  label: string;
+  color: string;
+  drivers: string[];
+  topAutomations: { name: string; timeSaved: string; impact: "High" | "Medium" }[];
+  weeklyCost: number; // estimated hrs/wk lost to manual work
+}
+
+function calculateChaosScore(d: SubmissionData): ChaosResult {
+  let score = 0;
+  const drivers: string[] = [];
+
+  // Solo operator — everything falls on one person
+  const teamText = (d.team_structure ?? "").toLowerCase();
+  const isSolo =
+    teamText === "1" ||
+    teamText.includes("solo") ||
+    teamText.includes("just me") ||
+    teamText.includes("alone") ||
+    teamText.includes("only");
+  if (isSolo) {
+    score += 22;
+    drivers.push("Solo operator — every task requires your attention");
+  }
+
+  // No automation tools detected
+  const stackText = (d.tech_stack ?? "").toLowerCase();
+  const hasAutomation =
+    stackText.includes("zapier") ||
+    stackText.includes("make") ||
+    stackText.includes("n8n") ||
+    stackText.includes("automat");
+  if (!hasAutomation) {
+    score += 15;
+    drivers.push("No automation layer in current stack");
+  }
+
+  // Multiple disconnected tools
+  const toolKeywords = [
+    "gmail", "google", "shopify", "woocommerce", "stripe", "notion",
+    "slack", "asana", "trello", "hubspot", "mailchimp", "calendly",
+    "zoom", "discord", "quickbooks", "keap", "activecampaign",
+  ];
+  const toolCount = toolKeywords.filter((t) => stackText.includes(t)).length;
+  if (toolCount >= 4) {
+    score += Math.min(toolCount * 3, 20);
+    drivers.push(`${toolCount}+ tools detected — high context-switching cost`);
+  }
+
+  // Challenge signals manual work
+  const challenge = (d.biggest_challenge ?? "").toLowerCase();
+  if (
+    challenge.includes("time") ||
+    challenge.includes("manual") ||
+    challenge.includes("all") ||
+    challenge.includes("everything")
+  ) {
+    score += 15;
+    drivers.push("Challenge pattern: time-starved, manual processes dominate");
+  }
+
+  // Revenue stage suggests ops volume
+  const rev = (d.revenue_trajectory ?? "").toLowerCase();
+  if (rev.includes("100k") || rev.includes("200k") || rev.includes("500k")) {
+    score += 10;
+    drivers.push("Revenue stage implies significant ops volume without dedicated team");
+  }
+
+  // Investment signals resource constraint
+  const invest = (d.investment_capacity ?? "").toLowerCase();
+  if (
+    invest.includes("200") ||
+    invest.includes("500") ||
+    invest.includes("free") ||
+    invest.includes("limited")
+  ) {
+    score += 8;
+    drivers.push("Budget constraint — automation ROI is critical");
+  }
+
+  score = Math.min(score, 100);
+  const label =
+    score >= 75 ? "Critical" : score >= 55 ? "High" : score >= 35 ? "Moderate" : "Low";
+  const color =
+    score >= 75 ? "text-red-400" : score >= 55 ? "text-amber-400" : score >= 35 ? "text-yellow-400" : "text-green-400";
+
+  // Estimated weekly cost: solo @ 40 hrs/wk, chaos % is overhead
+  const weeklyCost = Math.round((score / 100) * 0.4 * 40);
+
+  // Top 3 automation recommendations based on data
+  const automations: { name: string; timeSaved: string; impact: "High" | "Medium" }[] = [];
+  if (isSolo) {
+    automations.push({ name: "Inbox triage + priority sorting", timeSaved: "5–8 hrs/wk", impact: "High" });
+  }
+  const industry = (d.industry_model ?? "").toLowerCase();
+  if (industry.includes("ecommerce") || stackText.includes("woocommerce") || stackText.includes("shopify")) {
+    automations.push({ name: "Order notification + fulfillment routing", timeSaved: "3–5 hrs/wk", impact: "High" });
+  }
+  automations.push({ name: "Client follow-up sequences", timeSaved: "4–6 hrs/wk", impact: "High" });
+  automations.push({ name: "Invoice + payment reminders", timeSaved: "2–3 hrs/wk", impact: "Medium" });
+  automations.push({ name: "Morning intelligence brief", timeSaved: "1–2 hrs/wk", impact: "Medium" });
+
+  return { score, label, color, drivers, topAutomations: automations.slice(0, 3), weeklyCost };
+}
+
 export default function SummaryEditor() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session");
@@ -306,6 +416,91 @@ export default function SummaryEditor() {
             ))}
           </div>
         </div>
+
+        {/* Tool Chaos Score */}
+        {(() => {
+          const chaos = calculateChaosScore(data);
+          const barWidth = `${chaos.score}%`;
+          return (
+            <div className="glass rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-white">Tool Chaos Score</h2>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    Operational inefficiency index — auto-calculated from intake data
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className={`text-3xl font-bold ${chaos.color}`}>{chaos.score}</div>
+                  <div className={`text-xs font-medium ${chaos.color}`}>{chaos.label}</div>
+                </div>
+              </div>
+
+              {/* Score bar */}
+              <div className="w-full bg-slate-800 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all duration-700 ${
+                    chaos.score >= 75
+                      ? "bg-red-500"
+                      : chaos.score >= 55
+                      ? "bg-amber-500"
+                      : chaos.score >= 35
+                      ? "bg-yellow-500"
+                      : "bg-green-500"
+                  }`}
+                  style={{ width: barWidth }}
+                />
+              </div>
+
+              {/* Weekly cost estimate */}
+              <div className="bg-slate-800/60 rounded-lg px-4 py-3">
+                <p className="text-slate-300 text-sm">
+                  Estimated{" "}
+                  <span className="text-white font-semibold">{chaos.weeklyCost} hrs/week</span>{" "}
+                  lost to manual overhead — at a $75/hr opportunity cost that&apos;s{" "}
+                  <span className="text-amber-300 font-semibold">
+                    ${(chaos.weeklyCost * 75 * 4).toLocaleString()}/month
+                  </span>{" "}
+                  you can&apos;t bill for.
+                </p>
+              </div>
+
+              {/* Chaos drivers */}
+              {chaos.drivers.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">What&apos;s driving it</p>
+                  {chaos.drivers.map((d, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      <span className="text-amber-400 mt-0.5">•</span>
+                      <span className="text-slate-300">{d}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Top automations */}
+              <div className="space-y-1.5">
+                <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Top automations to deploy</p>
+                {chaos.topAutomations.map((a, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-slate-800/40 rounded-lg px-3 py-2">
+                    <span className="text-purple-400 text-xs font-bold w-5 shrink-0">{i + 1}.</span>
+                    <span className="text-slate-200 text-sm flex-1">{a.name}</span>
+                    <span className="text-slate-500 text-xs">{a.timeSaved}</span>
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded border ${
+                        a.impact === "High"
+                          ? "bg-green-500/10 text-green-400 border-green-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      }`}
+                    >
+                      {a.impact}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Editable Fields */}
         <div className="glass rounded-xl p-6 space-y-4">

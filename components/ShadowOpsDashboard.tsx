@@ -26,7 +26,35 @@ interface ClientData {
   offer_keywords?: string | null;
 }
 
-type SectionTab = "plan90" | "brief14" | "monetize" | "gpts" | "form" | "dna";
+type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "gpts" | "form" | "dna";
+
+function calcChaos(c: ClientData): { score: number; label: string; color: string; weeklyCost: number; topAutos: string[] } {
+  let score = 0;
+  const team = (c.investment_capacity ?? "").toLowerCase();
+  const isSolo = !c.investment_capacity || team.includes("200") || team.includes("500") || team.includes("free");
+  if (isSolo) score += 20;
+
+  const industry = (c.industry_model ?? "").toLowerCase();
+  if (industry.includes("ecommerce") || industry.includes("woocommerce") || industry.includes("shopify")) score += 10;
+
+  const challenge = (c.biggest_challenge ?? "").toLowerCase();
+  if (challenge.includes("time") || challenge.includes("manual") || challenge.includes("all") || challenge.includes("only")) score += 18;
+
+  // Solo with no AI background = high chaos
+  const aiLevel = (c.ai_comfort ?? "").toLowerCase();
+  if (!aiLevel.includes("advanced") && !aiLevel.includes("daily")) score += 12;
+
+  score = Math.min(score + 25, 100); // base of 25 for any solo SMB
+  const label = score >= 70 ? "Critical" : score >= 50 ? "High" : score >= 35 ? "Moderate" : "Low";
+  const color = score >= 70 ? "text-red-400" : score >= 50 ? "text-amber-400" : score >= 35 ? "text-yellow-400" : "text-green-400";
+  const weeklyCost = Math.round((score / 100) * 16);
+  const topAutos = [
+    "Priority inbox triage — 5–8 hrs/wk",
+    industry.includes("ecommerce") ? "Order routing automation — 3–5 hrs/wk" : "Client follow-up sequences — 4–6 hrs/wk",
+    "Invoice + payment reminders — 2–3 hrs/wk",
+  ];
+  return { score, label, color, weeklyCost, topAutos };
+}
 
 function buildFullProfileBlock(c: ClientData): string {
   return `Start with this data and guide me to the right next steps, questions, and/or strategy:
@@ -154,6 +182,7 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
     { id: "plan90", label: "90-Day Plan" },
     { id: "brief14", label: "14-Day Brief" },
     { id: "monetize", label: "Monetize" },
+    { id: "chaos", label: "Chaos Score" },
     { id: "gpts", label: "GPT Tools" },
     { id: "form", label: "Full Form" },
     { id: "dna", label: "DNA" },
@@ -290,6 +319,53 @@ export default function ShadowOpsDashboard({ standalone = true }: { standalone?:
                         onCopy={copyText}
                       />
                     )}
+                    {section === "chaos" && (() => {
+                      const chaos = calcChaos(c);
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-slate-300 text-sm font-medium">Tool Chaos Score</p>
+                              <p className="text-slate-500 text-xs">Estimated operational overhead</p>
+                            </div>
+                            <div className="text-right">
+                              <div className={`text-2xl font-bold ${chaos.color}`}>{chaos.score}</div>
+                              <div className={`text-xs ${chaos.color}`}>{chaos.label}</div>
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full ${chaos.score >= 70 ? "bg-red-500" : chaos.score >= 50 ? "bg-amber-500" : "bg-yellow-500"}`}
+                              style={{ width: `${chaos.score}%` }}
+                            />
+                          </div>
+                          <div className="bg-slate-800/60 rounded-lg px-3 py-2.5 text-sm text-slate-300">
+                            Estimated <span className="text-white font-semibold">{chaos.weeklyCost} hrs/week</span> lost to manual work ={" "}
+                            <span className="text-amber-300 font-semibold">${(chaos.weeklyCost * 75 * 4).toLocaleString()}/month</span> in unbillable overhead
+                          </div>
+                          <div className="space-y-1.5">
+                            <p className="text-slate-500 text-xs uppercase tracking-wide">Top automations to deploy</p>
+                            {chaos.topAutos.map((a, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm">
+                                <span className="text-purple-400 font-bold text-xs w-4">{i + 1}.</span>
+                                <span className="text-slate-300">{a}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => copyText(
+                              `Tool Chaos Score for ${c.business_name ?? "this business"}: ${chaos.score}/100 (${chaos.label})\n\nEstimated ${chaos.weeklyCost} hrs/week lost = $${(chaos.weeklyCost * 75 * 4).toLocaleString()}/month in overhead.\n\nTop automations:\n${chaos.topAutos.map((a, i) => `${i + 1}. ${a}`).join("\n")}`,
+                              `chaos-${c.session_id}`
+                            )}
+                            className="text-xs text-slate-400 hover:text-purple-300 flex items-center gap-1"
+                          >
+                            {copied === `chaos-${c.session_id}` ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                            Copy score for client
+                          </button>
+                        </div>
+                      );
+                    })()}
+
                     {section === "gpts" && (
                       <ContentBlock
                         text={profile}

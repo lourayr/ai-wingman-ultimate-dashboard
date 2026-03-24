@@ -85,6 +85,126 @@ const DECISIONS = [
   "Which GPT gets client-facing first: Strategy or Ghostwriter?",
 ];
 
+// ── Wingman Intelligence Engine ──────────────────────────────────────────────
+// Synthesizes signals ACROSS Gmail + Calendar + Clients to surface insights
+// no individual tool can show. This is the demo's WOW moment.
+
+interface WingmanInsight {
+  priority: "high" | "medium" | "low";
+  text: string;
+  action: string;
+  emoji: string;
+}
+
+function generateInsights(
+  gmail: GmailData,
+  calEvents: CalendarEvent[],
+  clients: ClientRow[],
+  now: Date
+): WingmanInsight[] {
+  if (!gmail.connected) return [];
+  const insights: WingmanInsight[] = [];
+
+  // 1. Meeting prep: upcoming event + related email in inbox
+  const upcoming = calEvents.filter((e) => {
+    const start = new Date(e.start);
+    const mins = (start.getTime() - now.getTime()) / 60000;
+    return mins > 0 && mins < 120;
+  });
+  for (const event of upcoming.slice(0, 2)) {
+    const titleWords = event.title.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    const related = (gmail.importantMessages ?? []).filter((msg) =>
+      titleWords.some(
+        (word) =>
+          msg.from.toLowerCase().includes(word) ||
+          msg.subject.toLowerCase().includes(word)
+      )
+    );
+    const mins = Math.round((new Date(event.start).getTime() - now.getTime()) / 60000);
+    if (related.length > 0) {
+      insights.push({
+        priority: "high",
+        text: `"${event.title}" in ${mins}m — ${related.length} related email${related.length > 1 ? "s" : ""} waiting in your inbox`,
+        action: "Review before joining",
+        emoji: "📅",
+      });
+    }
+  }
+
+  // 2. Calendar load vs inbox pressure
+  const meetingCount = calEvents.length;
+  const inboxCount = gmail.importantCount ?? 0;
+  if (meetingCount >= 3 && inboxCount >= 3) {
+    insights.push({
+      priority: "high",
+      text: `${meetingCount} meetings + ${inboxCount} priority emails today — attention is split across ${meetingCount + inboxCount} demands`,
+      action: "Block 30 min for inbox response",
+      emoji: "⚡",
+    });
+  } else if (meetingCount === 0 && inboxCount >= 2) {
+    insights.push({
+      priority: "low",
+      text: `Clear calendar today + ${inboxCount} priority emails — rare unblocked window`,
+      action: "Use this for deep work or client follow-up",
+      emoji: "✅",
+    });
+  }
+
+  // 3. Revenue signal: orders vs calendar capacity
+  const orderCount = gmail.orderCount ?? 0;
+  if (orderCount > 0) {
+    const heavy = meetingCount >= 4;
+    insights.push({
+      priority: orderCount >= 3 ? "high" : "medium",
+      text: `${orderCount} new order${orderCount > 1 ? "s" : ""} in inbox — ${heavy ? "heavy meeting day, delegate fulfillment" : "calendar has room to process today"}`,
+      action: heavy ? "Assign to VA or batch tonight" : "Process orders now",
+      emoji: "💰",
+    });
+  }
+
+  // 4. Client email match: inbox email domain matches a client in the pipeline
+  for (const client of clients.slice(0, 8)) {
+    if (!client.email) continue;
+    const domain = client.email.split("@")[1];
+    const match = (gmail.importantMessages ?? []).find(
+      (msg) => domain && msg.from.toLowerCase().includes(domain)
+    );
+    if (match) {
+      insights.push({
+        priority: "high",
+        text: `Email from ${client.business_name ?? "client"}: "${match.subject.slice(0, 55)}"`,
+        action: "Client is in your pipeline — respond within 2 hours",
+        emoji: "👤",
+      });
+      break;
+    }
+  }
+
+  // 5. Idle pipeline: clients waiting but no emails from them
+  const completeClients = clients.filter((c) => c.status === "complete").length;
+  const draftClients = clients.filter((c) => c.status !== "complete").length;
+  if (draftClients >= 2 && inboxCount === 0) {
+    insights.push({
+      priority: "medium",
+      text: `${draftClients} clients still in draft — inbox is clear, ideal time to follow up`,
+      action: "Send progress check-in",
+      emoji: "📋",
+    });
+  }
+
+  // 6. Clear day signal
+  if (insights.length === 0) {
+    insights.push({
+      priority: "low",
+      text: "Inbox clear and calendar light — system is running smoothly",
+      action: "Use this window for strategic planning",
+      emoji: "🎯",
+    });
+  }
+
+  return insights.slice(0, 4);
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -260,6 +380,57 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
           </div>
         ))}
       </div>
+
+      {/* Wingman Intelligence — cross-tool synthesis */}
+      {googleData.gmail.connected && (() => {
+        const insights = generateInsights(
+          googleData.gmail,
+          googleData.calendar.events,
+          clients,
+          now
+        );
+        return (
+          <div className="glass rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 flex items-center gap-2 border-b border-slate-800">
+              <Brain className="w-4 h-4 text-purple-400" />
+              <span className="font-semibold text-slate-200 flex-1">Wingman Intelligence</span>
+              <span className="text-xs bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                Cross-tool synthesis
+              </span>
+            </div>
+            <div className="px-5 py-4 space-y-2">
+              {insights.map((insight, i) => (
+                <div
+                  key={i}
+                  className={`flex items-start gap-3 rounded-lg px-3 py-2.5 ${
+                    insight.priority === "high"
+                      ? "bg-red-500/5 border border-red-500/20"
+                      : insight.priority === "medium"
+                      ? "bg-amber-500/5 border border-amber-500/20"
+                      : "bg-slate-800/40 border border-slate-700/50"
+                  }`}
+                >
+                  <span className="text-base leading-none mt-0.5">{insight.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-200 text-sm leading-snug">{insight.text}</p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        insight.priority === "high"
+                          ? "text-red-400"
+                          : insight.priority === "medium"
+                          ? "text-amber-400"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      → {insight.action}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Calm Score + Time */}
       <div className="glass rounded-xl p-5 flex items-center gap-6">
