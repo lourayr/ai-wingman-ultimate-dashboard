@@ -233,7 +233,6 @@ export default async function OpsDashboard() {
                     </span>
                     <Link
                       href={`/onboarding/summary?session=${c.session_id}`}
-                      onClick={(e) => e.stopPropagation()}
                       className="text-xs bg-slate-800 border border-slate-700 text-slate-400 px-2.5 py-1 rounded-lg hover:bg-slate-700 transition-colors whitespace-nowrap"
                     >
                       Form
