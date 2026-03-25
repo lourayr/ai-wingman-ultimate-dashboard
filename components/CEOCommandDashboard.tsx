@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Brain,
@@ -332,8 +331,7 @@ function Section({
   );
 }
 
-export default function CEOCommandDashboard({ standalone = true }: { standalone?: boolean }) {
-  const searchParams = useSearchParams();
+export default function CEOCommandDashboard({ standalone = true, connectedParam }: { standalone?: boolean; connectedParam?: string | null }) {
   const [now, setNow] = useState(new Date());
   const [googleData, setGoogleData] = useState<GoogleData>({
     gmail: { connected: false },
@@ -503,10 +501,10 @@ export default function CEOCommandDashboard({ standalone = true }: { standalone?
 
   // Re-fetch after Google OAuth callback
   useEffect(() => {
-    if (searchParams.get("connected") === "google") {
+    if (connectedParam === "google") {
       fetchGoogleData();
     }
-  }, [searchParams, fetchGoogleData]);
+  }, [connectedParam, fetchGoogleData]);
 
   const pipelineTotal = clients.reduce((sum, c) => {
     const val = parseInt((c.investment_capacity ?? "").replace(/\D/g, "")) || 0;

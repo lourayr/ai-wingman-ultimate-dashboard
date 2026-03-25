@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import { Copy, CheckCircle, Download, ExternalLink } from "lucide-react";
 import Navigation from "./Navigation";
 
@@ -209,9 +208,7 @@ function calculateChaosScore(d: SubmissionData): ChaosResult {
   return { score, label, color, drivers, topAutomations: automations.slice(0, 3), weeklyCost };
 }
 
-export default function SummaryEditor() {
-  const searchParams = useSearchParams();
-  const sessionId = searchParams.get("session");
+export default function SummaryEditor({ sessionId }: { sessionId?: string | null }) {
   const [data, setData] = useState<SubmissionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

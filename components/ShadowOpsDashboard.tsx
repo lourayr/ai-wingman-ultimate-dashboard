@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { Target, Copy, CheckCircle, ExternalLink, AlertCircle, ChevronDown, ChevronUp, Zap, Loader2 } from "lucide-react";
 import Navigation from "./Navigation";
 
@@ -166,16 +165,15 @@ Surface wins visibly → clients refer others
 Timeline: 90 days`;
 }
 
-export default function ShadowOpsDashboard({ standalone = true }: { standalone?: boolean }) {
-  const searchParams = useSearchParams();
+export default function ShadowOpsDashboard({ standalone = true, initialClientId }: { standalone?: boolean; initialClientId?: string | null }) {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(searchParams.get("client"));
+  const [expandedId, setExpandedId] = useState<string | null>(initialClientId ?? null);
   const [activeSection, setActiveSection] = useState<Record<string, SectionTab>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
 
-  const targetClientId = searchParams.get("client");
+  const targetClientId = initialClientId ?? null;
 
   useEffect(() => {
     setLoading(true);
