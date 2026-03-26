@@ -68,11 +68,18 @@ export async function GET() {
       `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS hidden_fear TEXT`,
       `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS content_constraints TEXT`,
     ];
+    const results: { migration: string; status: string }[] = [];
     for (const m of migrations) {
-      try { await sql.unsafe(m); } catch { /* column already exists */ }
+      try {
+        // neon() uses direct call syntax for raw strings (not .unsafe())
+        await sql(m, []);
+        results.push({ migration: m.slice(0, 60), status: "ok" });
+      } catch (err) {
+        results.push({ migration: m.slice(0, 60), status: String(err).slice(0, 100) });
+      }
     }
 
-    return NextResponse.json({ ok: true, message: "Table ready — all columns applied" });
+    return NextResponse.json({ ok: true, message: "Table ready — all columns applied", results });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: String(error) },

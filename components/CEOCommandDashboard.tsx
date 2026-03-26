@@ -142,7 +142,7 @@ const DECISIONS = [
 // OpenRouter model options — stored in localStorage as user preference
 const MODEL_OPTIONS: Array<{ id: string; label: string; note?: string }> = [
   { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", note: "fast + cheap" },
-  { id: "openrouter/auto", label: "Auto (OpenRouter picks)", note: "best available" },
+  { id: "openai/gpt-4o", label: "GPT-4o", note: "most capable" },
   { id: "x-ai/grok-3-beta", label: "Grok 3 (xAI)", note: "real-time data" },
   { id: "google/gemini-2.5-pro-preview", label: "Gemini 2.5 Pro", note: "1M context" },
   { id: "deepseek/deepseek-r1", label: "DeepSeek R1", note: "free / reasoning" },

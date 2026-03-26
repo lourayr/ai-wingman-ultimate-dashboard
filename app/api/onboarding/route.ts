@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+const V2_COLUMNS = [
+  "contact_name", "business_description", "core_offer", "daily_drains",
+  "instagram_url", "instagram_desc", "best_content", "sales_process",
+  "lead_magnet", "offer_tiers", "competitors", "hidden_fear", "content_constraints",
+  "brand_bio", "brand_voice", "banned_words", "persuasive_premise",
+  "testimonials", "content_keywords", "offer_keywords",
+];
+
+async function runMigrations() {
+  const sql = getDb();
+  for (const col of V2_COLUMNS) {
+    try {
+      await sql(`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS ${col} TEXT`, []);
+    } catch { /* already exists */ }
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("session");
@@ -59,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await sql`
+    const doInsert = async () => sql`
       INSERT INTO onboarding_submissions (
         session_id, status, current_step,
         email, business_name, website, industry_model, team_structure, revenue_trajectory,
@@ -138,6 +155,19 @@ export async function POST(request: NextRequest) {
         hidden_fear = COALESCE(EXCLUDED.hidden_fear, onboarding_submissions.hidden_fear),
         content_constraints = COALESCE(EXCLUDED.content_constraints, onboarding_submissions.content_constraints)
     `;
+
+    try {
+      await doInsert();
+    } catch (firstErr) {
+      const msg = String(firstErr);
+      // Auto-migrate if columns are missing, then retry once
+      if (msg.includes("column") && msg.includes("does not exist")) {
+        await runMigrations();
+        await doInsert();
+      } else {
+        throw firstErr;
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

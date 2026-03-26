@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Target, Copy, CheckCircle, ExternalLink, AlertCircle, ChevronDown, ChevronUp, Zap, Loader2 } from "lucide-react";
+import { Target, Copy, CheckCircle, ExternalLink, AlertCircle, ChevronDown, ChevronUp, Zap, Loader2, Layout } from "lucide-react";
 import Navigation from "./Navigation";
 
 // Gamma Strategy Discord channel — OpenClaw monitors this
@@ -80,7 +80,23 @@ interface OpportunityResult {
   quick_win: boolean;
 }
 
-type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "opportunities" | "gpts" | "form" | "dna" | "ghostwriter" | "synthesise";
+interface SlideData {
+  title: string;
+  type: "cover" | "section" | "content" | "callout" | "closing";
+  headline?: string;
+  bullets?: string[];
+  notes?: string;
+}
+
+const PRES_CATEGORIES = [
+  "Monetization",
+  "Strategy & Planning",
+  "Marketing Campaigns",
+  "AI Automation and Workflows",
+  "Other",
+];
+
+type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "opportunities" | "gpts" | "form" | "dna" | "ghostwriter" | "synthesise" | "presentation";
 
 function chaosColor(score: number) {
   if (score >= 81) return "text-red-400";
@@ -200,6 +216,9 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
   const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
   const [chaosResults, setChaosResults] = useState<Record<string, ChaosResult | "loading" | "error">>({});
   const [oppResults, setOppResults] = useState<Record<string, OpportunityResult[] | "loading" | "error">>({});
+  const [presInputs, setPresInputs] = useState<Record<string, { content: string; categories: string[] }>>({});
+  const [presResults, setPresResults] = useState<Record<string, SlideData[] | "loading" | "error">>({});
+  const [presSelected, setPresSelected] = useState<Record<string, number>>({});
 
   const targetClientId = initialClientId ?? null;
 
@@ -298,6 +317,33 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
     }
   };
 
+  const fetchPresentation = async (c: ClientData) => {
+    const id = c.session_id;
+    const input = presInputs[id];
+    if (!input?.content?.trim()) return;
+    setPresResults((prev) => ({ ...prev, [id]: "loading" }));
+    try {
+      const res = await fetch("/api/presentation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: input.content,
+          categories: input.categories,
+          clientName: c.business_name ?? "Client",
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.slides)) {
+        setPresResults((prev) => ({ ...prev, [id]: data.slides as SlideData[] }));
+        setPresSelected((prev) => ({ ...prev, [id]: 0 }));
+      } else {
+        setPresResults((prev) => ({ ...prev, [id]: "error" }));
+      }
+    } catch {
+      setPresResults((prev) => ({ ...prev, [id]: "error" }));
+    }
+  };
+
   const getSection = (id: string): SectionTab => activeSection[id] ?? "plan90";
   const setSection = (id: string, tab: SectionTab, c?: ClientData) => {
     setActiveSection((prev) => ({ ...prev, [id]: tab }));
@@ -314,6 +360,7 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
     { id: "gpts", label: "GPT Tools" },
     { id: "ghostwriter", label: "GhostwriterOS" },
     { id: "synthesise", label: "Synthesise" },
+    { id: "presentation", label: "Slides" },
     { id: "form", label: "Full Form" },
     { id: "dna", label: "DNA" },
   ];
@@ -438,6 +485,14 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
                         </div>
                       );
                     })()}
+                    {/* Build Slides */}
+                    <button
+                      onClick={() => setSection(c.session_id, "presentation")}
+                      className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-sm px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Layout className="w-3.5 h-3.5" />
+                      Build Slides
+                    </button>
                   </div>
 
                   {/* Section Tabs */}
@@ -736,6 +791,205 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
                         <p className="text-slate-600 text-xs text-center">Brief auto-copies on launch</p>
                       </div>
                     )}
+
+                    {section === "presentation" && (() => {
+                      const id = c.session_id;
+                      const input = presInputs[id] ?? { content: "", categories: [] };
+                      const pr = presResults[id];
+                      const selectedIdx = presSelected[id] ?? 0;
+                      const slides = Array.isArray(pr) ? pr : null;
+
+                      const toggleCat = (cat: string) => {
+                        setPresInputs((prev) => {
+                          const cur = prev[id] ?? { content: "", categories: [] };
+                          const cats = cur.categories.includes(cat)
+                            ? cur.categories.filter((c) => c !== cat)
+                            : [...cur.categories, cat];
+                          return { ...prev, [id]: { ...cur, categories: cats } };
+                        });
+                      };
+
+                      const SLIDE_TYPE_COLORS: Record<string, string> = {
+                        cover: "from-purple-900/80 to-indigo-900/80 border-purple-500/40",
+                        section: "from-slate-800/80 to-slate-900/80 border-slate-600/40",
+                        content: "from-slate-900/80 to-slate-800/80 border-slate-700/40",
+                        callout: "from-cyan-900/60 to-indigo-900/60 border-cyan-500/40",
+                        closing: "from-indigo-900/80 to-purple-900/80 border-indigo-500/40",
+                      };
+
+                      return (
+                        <div className="space-y-3">
+                          {/* Input area — hide after slides generated */}
+                          {!slides && (
+                            <div className="space-y-3">
+                              <p className="text-slate-400 text-xs">Paste any content for {c.business_name ?? "this client"} — strategy notes, brief, research, copy — and generate a slide deck.</p>
+
+                              {/* Category checkboxes */}
+                              <div>
+                                <p className="text-slate-500 text-xs mb-1.5 uppercase tracking-wide">Focus area</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {PRES_CATEGORIES.map((cat) => (
+                                    <button
+                                      key={cat}
+                                      onClick={() => toggleCat(cat)}
+                                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                        input.categories.includes(cat)
+                                          ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-300"
+                                          : "bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-500"
+                                      }`}
+                                    >
+                                      {cat}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Content textarea */}
+                              <textarea
+                                className="w-full bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:border-indigo-500/50 min-h-[140px]"
+                                placeholder="Paste client content, strategy notes, briefs, or any text here..."
+                                value={input.content}
+                                onChange={(e) => setPresInputs((prev) => ({
+                                  ...prev,
+                                  [id]: { ...(prev[id] ?? { categories: [] }), content: e.target.value },
+                                }))}
+                              />
+
+                              <button
+                                onClick={() => fetchPresentation(c)}
+                                disabled={!input.content.trim() || pr === "loading"}
+                                className="flex items-center gap-2 w-full justify-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {pr === "loading" ? (
+                                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating slides…</>
+                                ) : (
+                                  <><Layout className="w-4 h-4" /> Generate Presentation</>
+                                )}
+                              </button>
+
+                              {pr === "error" && (
+                                <p className="text-red-400 text-xs text-center">Failed to generate. Check your content and try again.</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Slide viewer */}
+                          {slides && slides.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-slate-300 text-sm font-medium">{slides.length} slides generated</p>
+                                <button
+                                  onClick={() => {
+                                    setPresResults((prev) => { const n = {...prev}; delete n[id]; return n; });
+                                    setPresInputs((prev) => ({ ...prev, [id]: { content: "", categories: [] } }));
+                                  }}
+                                  className="text-xs text-slate-500 hover:text-indigo-300 transition-colors"
+                                >
+                                  ← Start over
+                                </button>
+                              </div>
+
+                              <div className="flex gap-3">
+                                {/* Left: thumbnail nav */}
+                                <div className="w-28 shrink-0 space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                                  {slides.map((sl, i) => (
+                                    <button
+                                      key={i}
+                                      onClick={() => setPresSelected((prev) => ({ ...prev, [id]: i }))}
+                                      className={`w-full text-left rounded-lg p-2 transition-colors border ${
+                                        i === selectedIdx
+                                          ? "bg-indigo-500/20 border-indigo-500/50"
+                                          : "bg-slate-800/40 border-slate-700/40 hover:border-slate-600"
+                                      }`}
+                                    >
+                                      <div className="text-indigo-400 text-xs font-mono mb-0.5">{String(i + 1).padStart(2, "0")}</div>
+                                      <div className="text-slate-300 text-xs leading-tight line-clamp-2">{sl.title}</div>
+                                      <div className={`mt-1 text-xs px-1 py-0.5 rounded text-center ${
+                                        sl.type === "cover" ? "bg-purple-500/20 text-purple-400" :
+                                        sl.type === "callout" ? "bg-cyan-500/20 text-cyan-400" :
+                                        sl.type === "closing" ? "bg-indigo-500/20 text-indigo-400" :
+                                        sl.type === "section" ? "bg-slate-600/40 text-slate-400" :
+                                        "bg-slate-700/40 text-slate-500"
+                                      }`}>
+                                        {sl.type}
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {/* Right: full slide view */}
+                                {(() => {
+                                  const sl = slides[selectedIdx];
+                                  if (!sl) return null;
+                                  const colors = SLIDE_TYPE_COLORS[sl.type] ?? SLIDE_TYPE_COLORS.content;
+                                  return (
+                                    <div className={`flex-1 rounded-xl border bg-gradient-to-br ${colors} p-5 min-h-[280px] flex flex-col justify-between`}>
+                                      <div className="space-y-3">
+                                        <div>
+                                          <div className="text-indigo-300/70 text-xs mb-1 uppercase tracking-widest">{sl.type}</div>
+                                          <h3 className="text-white text-lg font-bold leading-tight">{sl.title}</h3>
+                                        </div>
+                                        {sl.headline && (
+                                          <p className="text-slate-200 text-base font-medium leading-snug border-l-2 border-indigo-400 pl-3">
+                                            {sl.headline}
+                                          </p>
+                                        )}
+                                        {sl.bullets && sl.bullets.length > 0 && (
+                                          <ul className="space-y-1.5">
+                                            {sl.bullets.map((b, bi) => (
+                                              <li key={bi} className="flex items-start gap-2 text-sm text-slate-300">
+                                                <span className="text-indigo-400 mt-1 shrink-0">▸</span>
+                                                <span>{b}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        )}
+                                      </div>
+                                      {sl.notes && (
+                                        <div className="mt-4 pt-3 border-t border-white/10">
+                                          <p className="text-slate-500 text-xs italic">{sl.notes}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+
+                              {/* Nav buttons */}
+                              <div className="flex items-center justify-between pt-1">
+                                <button
+                                  onClick={() => setPresSelected((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) - 1) }))}
+                                  disabled={selectedIdx === 0}
+                                  className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-30 px-2 py-1"
+                                >
+                                  ← Prev
+                                </button>
+                                <span className="text-slate-500 text-xs">{selectedIdx + 1} / {slides.length}</span>
+                                <button
+                                  onClick={() => setPresSelected((prev) => ({ ...prev, [id]: Math.min(slides.length - 1, (prev[id] ?? 0) + 1) }))}
+                                  disabled={selectedIdx === slides.length - 1}
+                                  className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-30 px-2 py-1"
+                                >
+                                  Next →
+                                </button>
+                              </div>
+
+                              {/* Copy all text */}
+                              <button
+                                onClick={() => copyText(
+                                  slides.map((sl, i) => `SLIDE ${i + 1}: ${sl.title.toUpperCase()}\n${sl.headline ? sl.headline + "\n" : ""}${(sl.bullets ?? []).map((b) => `• ${b}`).join("\n")}`).join("\n\n---\n\n"),
+                                  `pres-${id}`
+                                )}
+                                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-300 transition-colors"
+                              >
+                                {copied === `pres-${id}` ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                                Copy all slides as text
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {section === "form" && (
                       <div className="space-y-1.5 text-sm">
