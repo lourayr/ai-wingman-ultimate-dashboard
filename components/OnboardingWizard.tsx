@@ -17,7 +17,9 @@ interface FormData {
   industryModel: string;
   revenueTrajectory: string;
   teamStructure: string;
+  teamStructureOther: string;
   primaryGoal: string;
+  primaryGoalOther: string;
   // Section 2 — Audience & Offer (Q5–Q9)
   biggestChallenge: string;
   idealClient: string;
@@ -28,10 +30,12 @@ interface FormData {
   techStack: string;
   investmentCapacity: string;
   aiComfort: string;
+  aiComfortOther: string;
   successMetrics: string;
   // Section 4 — Vision & Voice (Q14–Q18)
   dreamScenario: string;
   brandVoice: string;
+  brandVoiceOther: string;
   bannedWords: string;
   persuasivePremise: string;
   testimonials: string;
@@ -55,17 +59,17 @@ interface FormData {
 const EMPTY: FormData = {
   email: "", businessName: "", website: "", instagramUrl: "", contactName: "",
   businessDescription: "", industryModel: "", revenueTrajectory: "", teamStructure: "",
-  primaryGoal: "", biggestChallenge: "", idealClient: "", coreOffer: "",
+  teamStructureOther: "", primaryGoal: "", primaryGoalOther: "",
+  biggestChallenge: "", idealClient: "", coreOffer: "",
   uniqueApproach: "", dailyDrains: "", techStack: "", investmentCapacity: "",
-  aiComfort: "", successMetrics: "", dreamScenario: "", brandVoice: "",
-  bannedWords: "", persuasivePremise: "", testimonials: "",
+  aiComfort: "", aiComfortOther: "", successMetrics: "", dreamScenario: "", brandVoice: "",
+  brandVoiceOther: "", bannedWords: "", persuasivePremise: "", testimonials: "",
   untappedOpportunity: "", anythingElse: "",
   bestContent: "", contentKeywords: "", offerKeywords: "", instagramDesc: "",
   salesProcess: "", leadMagnet: "", offerTiers: "", competitors: "",
   hiddenFear: "", contentConstraints: "", scalingBottleneck: "",
 };
 
-// ─── Step metadata ─────────────────────────────────────────────────────────────
 const STEPS = [
   { label: "Business Foundation", num: 1, total: 5 },
   { label: "Your Audience & Offer", num: 2, total: 5 },
@@ -113,26 +117,58 @@ function Field({
   );
 }
 
+/**
+ * RadioGroup — clicking anywhere on the row (dot or label text) selects the option.
+ * If an option label starts with "Other", an optional free-text textarea appears below.
+ */
 function RadioGroup({
-  q, label, name, value, onChange, options,
+  q, label, value, onChange, options, otherValue, onOtherChange,
 }: {
-  q?: string; label: string; name: string; value: string;
+  q?: string; label: string; value: string;
   onChange: (val: string) => void; options: string[];
+  otherValue?: string;
+  onOtherChange?: (val: string) => void;
 }) {
+  const isOther = value.toLowerCase().startsWith("other");
+
   return (
     <div className="space-y-2">
       {q && <span className="text-xs text-slate-600 uppercase tracking-widest">{q}</span>}
-      <label className="block text-slate-200 text-sm font-medium leading-snug">{label}</label>
+      <p className="text-slate-200 text-sm font-medium leading-snug">{label}</p>
       <div className="flex flex-col gap-1.5">
         {options.map((opt) => (
-          <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
-            <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${value === opt ? "border-purple-500 bg-purple-500/20" : "border-slate-600 group-hover:border-slate-400"}`}>
+          <div
+            key={opt}
+            role="radio"
+            aria-checked={value === opt}
+            tabIndex={0}
+            onClick={() => onChange(opt)}
+            onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") onChange(opt); }}
+            className="flex items-center gap-2.5 cursor-pointer group select-none"
+          >
+            <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+              value === opt
+                ? "border-purple-500 bg-purple-500/20"
+                : "border-slate-600 group-hover:border-slate-400"
+            }`}>
               {value === opt && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
             </div>
-            <span className="text-slate-300 text-sm" onClick={() => onChange(opt)}>{opt}</span>
-          </label>
+            <span className="text-slate-300 text-sm">{opt}</span>
+          </div>
         ))}
       </div>
+
+      {/* Free-text box when an "Other" option is selected */}
+      {isOther && onOtherChange !== undefined && (
+        <textarea
+          value={otherValue ?? ""}
+          onChange={(e) => onOtherChange(e.target.value)}
+          placeholder="Describe your answer here…"
+          rows={2}
+          autoFocus
+          className="w-full mt-1.5 bg-slate-800/60 border border-purple-500/40 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500 resize-none"
+        />
+      )}
     </div>
   );
 }
@@ -199,6 +235,25 @@ export default function OnboardingWizard() {
     localStorage.setItem("wingman-form-draft", JSON.stringify(updated));
   };
 
+  const handleOther = (name: keyof FormData, val: string) => {
+    const updated = { ...form, [name]: val };
+    setForm(updated);
+    localStorage.setItem("wingman-form-draft", JSON.stringify(updated));
+  };
+
+  // Resolve "Other" fields: if the radio value is "Other...", use the free-text value for the actual saved field
+  const resolvedBrandVoice = form.brandVoice.startsWith("Other")
+    ? (form.brandVoiceOther || form.brandVoice)
+    : form.brandVoice;
+
+  const resolvedPrimaryGoal = form.primaryGoal.startsWith("Other")
+    ? (form.primaryGoalOther || form.primaryGoal)
+    : form.primaryGoal;
+
+  const resolvedAiComfort = form.aiComfort.startsWith("Other")
+    ? (form.aiComfortOther || form.aiComfort)
+    : form.aiComfort;
+
   const save = async (finalStatus?: string) => {
     setSaving(true);
     try {
@@ -211,14 +266,17 @@ export default function OnboardingWizard() {
           currentStep: step,
           email: form.email, businessName: form.businessName, website: form.website,
           industryModel: form.industryModel, teamStructure: form.teamStructure,
-          revenueTrajectory: form.revenueTrajectory, primaryGoal: form.primaryGoal,
+          revenueTrajectory: form.revenueTrajectory,
+          primaryGoal: resolvedPrimaryGoal,
           biggestChallenge: form.biggestChallenge, techStack: form.techStack,
           investmentCapacity: form.investmentCapacity, successMetrics: form.successMetrics,
-          untappedOpportunity: form.untappedOpportunity, aiComfort: form.aiComfort,
-          dreamScenario: form.dreamScenario, uvp: form.uniqueApproach,
+          untappedOpportunity: form.untappedOpportunity,
+          aiComfort: resolvedAiComfort,
+          dreamScenario: form.dreamScenario,
+          uvp: form.uniqueApproach,
           idealClient: form.idealClient, unconventionalApproach: form.uniqueApproach,
           anythingElse: form.anythingElse,
-          brandVoice: form.brandVoice, bannedWords: form.bannedWords,
+          brandVoice: resolvedBrandVoice, bannedWords: form.bannedWords,
           persuasivePremise: form.persuasivePremise, testimonials: form.testimonials,
           contentKeywords: form.contentKeywords, offerKeywords: form.offerKeywords,
           brandBio: form.businessDescription,
@@ -322,7 +380,7 @@ export default function OnboardingWizard() {
                 required
               />
               <Field
-                label="Instagram URL (optional)"
+                label="Instagram URL (optional — required for IG monetization plan)"
                 name="instagramUrl" value={form.instagramUrl} onChange={handleChange}
                 placeholder="https://instagram.com/youraccount"
               />
@@ -349,9 +407,11 @@ export default function OnboardingWizard() {
                 />
                 <RadioGroup
                   label="Team size"
-                  name="teamStructure" value={form.teamStructure}
+                  value={form.teamStructure}
                   onChange={(v) => handleRadio("teamStructure", v)}
-                  options={["Just me", "Me + 1–2 contractors", "Small team (3–5)", "6+"]}
+                  options={["Just me", "Me + 1–2 contractors", "Small team (3–5)", "6+", "Other"]}
+                  otherValue={form.teamStructureOther}
+                  onOtherChange={(v) => handleOther("teamStructureOther", v)}
                 />
               </div>
             </div>
@@ -362,9 +422,11 @@ export default function OnboardingWizard() {
             <div className="space-y-5">
               <RadioGroup
                 q="Q4" label="What is your primary goal for the next 90 days?"
-                name="primaryGoal" value={form.primaryGoal}
+                value={form.primaryGoal}
                 onChange={(v) => handleRadio("primaryGoal", v)}
                 options={["Get more leads or clients", "Automate and simplify operations", "Launch a new offer or product", "Build a content or marketing system", "Stabilize and systematize what already works", "Other"]}
+                otherValue={form.primaryGoalOther}
+                onOtherChange={(v) => handleOther("primaryGoalOther", v)}
               />
               <div className="border-t border-slate-800 pt-4">
                 <Field
@@ -434,9 +496,17 @@ export default function OnboardingWizard() {
             <div className="space-y-5">
               <RadioGroup
                 q="Q12" label="Comfort level with AI and automation"
-                name="aiComfort" value={form.aiComfort}
+                value={form.aiComfort}
                 onChange={(v) => handleRadio("aiComfort", v)}
-                options={["Early adopter — I already use AI tools daily", "Curious but cautious — I want to learn as we go", "Skeptical — show me it works before I commit", "Beginner — I am starting from scratch"]}
+                options={[
+                  "Early adopter — I already use AI tools daily",
+                  "Curious but cautious — I want to learn as we go",
+                  "Skeptical — show me it works before I commit",
+                  "Beginner — I am starting from scratch",
+                  "Other",
+                ]}
+                otherValue={form.aiComfortOther}
+                onOtherChange={(v) => handleOther("aiComfortOther", v)}
               />
               <div className="border-t border-slate-800 pt-4">
                 <Field
@@ -457,22 +527,20 @@ export default function OnboardingWizard() {
               <div className="border-t border-slate-800 pt-4">
                 <RadioGroup
                   q="Q15" label="How would you describe your brand voice?"
-                  name="brandVoice" value={form.brandVoice}
+                  value={form.brandVoice}
                   onChange={(v) => handleRadio("brandVoice", v)}
-                  options={["Warm and conversational", "Direct and no-nonsense", "Authoritative and expert", "Spiritual and values-driven", "Bold and energetic", "Calm and grounding", "Other — I'll describe it below"]}
+                  options={[
+                    "Warm and conversational",
+                    "Direct and no-nonsense",
+                    "Authoritative and expert",
+                    "Spiritual and values-driven",
+                    "Bold and energetic",
+                    "Calm and grounding",
+                    "Other — describe it below",
+                  ]}
+                  otherValue={form.brandVoiceOther}
+                  onOtherChange={(v) => handleOther("brandVoiceOther", v)}
                 />
-                {form.brandVoice === "Other — I'll describe it below" && (
-                  <div className="mt-2">
-                    <textarea
-                      name="brandVoice"
-                      value={form.brandVoice === "Other — I'll describe it below" ? "" : form.brandVoice}
-                      onChange={handleChange}
-                      placeholder="Paste 2–3 sentences that sound exactly like you"
-                      rows={2}
-                      className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/60 resize-none"
-                    />
-                  </div>
-                )}
               </div>
             </div>
           )}

@@ -40,36 +40,49 @@ interface ClientData {
   testimonials?: string | null;
   content_keywords?: string | null;
   offer_keywords?: string | null;
+  // v2 fields
+  contact_name?: string | null;
+  business_description?: string | null;
+  core_offer?: string | null;
+  daily_drains?: string | null;
+  instagram_url?: string | null;
+  instagram_desc?: string | null;
+  best_content?: string | null;
+  sales_process?: string | null;
+  lead_magnet?: string | null;
+  offer_tiers?: string | null;
+  competitors?: string | null;
+  hidden_fear?: string | null;
+  content_constraints?: string | null;
+}
+
+interface ChaosResult {
+  score: number;
+  label: string;
+  summary: string;
+  weeklyHoursLost: number;
+  monthlyRevenueImpact: number;
+  drivers: string[];
+  topAutomations: { name: string; hoursSaved: number; priority: string }[];
+  recommendedEntry: string;
 }
 
 type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "gpts" | "form" | "dna";
 
-function calcChaos(c: ClientData): { score: number; label: string; color: string; weeklyCost: number; topAutos: string[] } {
-  let score = 0;
-  const team = (c.investment_capacity ?? "").toLowerCase();
-  const isSolo = !c.investment_capacity || team.includes("200") || team.includes("500") || team.includes("free");
-  if (isSolo) score += 20;
+function chaosColor(score: number) {
+  if (score >= 81) return "text-red-400";
+  if (score >= 66) return "text-orange-400";
+  if (score >= 46) return "text-amber-400";
+  if (score >= 26) return "text-yellow-400";
+  return "text-green-400";
+}
 
-  const industry = (c.industry_model ?? "").toLowerCase();
-  if (industry.includes("ecommerce") || industry.includes("woocommerce") || industry.includes("shopify")) score += 10;
-
-  const challenge = (c.biggest_challenge ?? "").toLowerCase();
-  if (challenge.includes("time") || challenge.includes("manual") || challenge.includes("all") || challenge.includes("only")) score += 18;
-
-  // Solo with no AI background = high chaos
-  const aiLevel = (c.ai_comfort ?? "").toLowerCase();
-  if (!aiLevel.includes("advanced") && !aiLevel.includes("daily")) score += 12;
-
-  score = Math.min(score + 25, 100); // base of 25 for any solo SMB
-  const label = score >= 70 ? "Critical" : score >= 50 ? "High" : score >= 35 ? "Moderate" : "Low";
-  const color = score >= 70 ? "text-red-400" : score >= 50 ? "text-amber-400" : score >= 35 ? "text-yellow-400" : "text-green-400";
-  const weeklyCost = Math.round((score / 100) * 16);
-  const topAutos = [
-    "Priority inbox triage — 5–8 hrs/wk",
-    industry.includes("ecommerce") ? "Order routing automation — 3–5 hrs/wk" : "Client follow-up sequences — 4–6 hrs/wk",
-    "Invoice + payment reminders — 2–3 hrs/wk",
-  ];
-  return { score, label, color, weeklyCost, topAutos };
+function chaosBarColor(score: number) {
+  if (score >= 81) return "bg-red-500";
+  if (score >= 66) return "bg-orange-500";
+  if (score >= 46) return "bg-amber-500";
+  if (score >= 26) return "bg-yellow-500";
+  return "bg-green-500";
 }
 
 function buildFullProfileBlock(c: ClientData): string {
@@ -172,6 +185,7 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
   const [activeSection, setActiveSection] = useState<Record<string, SectionTab>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
+  const [chaosResults, setChaosResults] = useState<Record<string, ChaosResult | "loading" | "error">>({});
 
   const targetClientId = initialClientId ?? null;
 
@@ -228,9 +242,32 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
     }
   };
 
+  const fetchChaosScore = async (c: ClientData) => {
+    const id = c.session_id;
+    if (chaosResults[id]) return; // already loaded or loading
+    setChaosResults((prev) => ({ ...prev, [id]: "loading" }));
+    try {
+      const res = await fetch("/api/chaos-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client: c }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setChaosResults((prev) => ({ ...prev, [id]: data as ChaosResult }));
+      } else {
+        setChaosResults((prev) => ({ ...prev, [id]: "error" }));
+      }
+    } catch {
+      setChaosResults((prev) => ({ ...prev, [id]: "error" }));
+    }
+  };
+
   const getSection = (id: string): SectionTab => activeSection[id] ?? "plan90";
-  const setSection = (id: string, tab: SectionTab) =>
+  const setSection = (id: string, tab: SectionTab, c?: ClientData) => {
     setActiveSection((prev) => ({ ...prev, [id]: tab }));
+    if (tab === "chaos" && c) fetchChaosScore(c);
+  };
 
   const SECTION_TABS: { id: SectionTab; label: string }[] = [
     { id: "plan90", label: "90-Day Plan" },
@@ -369,7 +406,7 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
                     {SECTION_TABS.map(({ id, label }) => (
                       <button
                         key={id}
-                        onClick={() => setSection(c.session_id, id)}
+                        onClick={() => setSection(c.session_id, id, c)}
                         className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap -mb-px ${
                           section === id
                             ? "border-purple-500 text-purple-300"
@@ -408,48 +445,102 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
                       />
                     )}
                     {section === "chaos" && (() => {
-                      const chaos = calcChaos(c);
+                      const cr = chaosResults[c.session_id];
+                      if (!cr || cr === "loading") {
+                        return (
+                          <div className="flex items-center justify-center py-10 gap-3 text-slate-400">
+                            <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                            <span className="text-sm">Analyzing with DeepSeek R1…</span>
+                          </div>
+                        );
+                      }
+                      if (cr === "error") {
+                        return (
+                          <div className="text-center py-8 space-y-2">
+                            <p className="text-red-400 text-sm">Failed to generate score.</p>
+                            <button
+                              onClick={() => {
+                                setChaosResults((prev) => { const n = {...prev}; delete n[c.session_id]; return n; });
+                                fetchChaosScore(c);
+                              }}
+                              className="text-purple-400 text-xs hover:underline"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        );
+                      }
+                      const col = chaosColor(cr.score);
+                      const bar = chaosBarColor(cr.score);
+                      const copyStr = `Tool Chaos Score — ${c.business_name ?? "Client"}: ${cr.score}/100 (${cr.label})\n\n${cr.summary}\n\nEstimated ${cr.weeklyHoursLost} hrs/week lost = $${cr.monthlyRevenueImpact.toLocaleString()}/month in overhead.\n\nWhat's driving it:\n${cr.drivers.map((d, i) => `${i + 1}. ${d}`).join("\n")}\n\nTop automations:\n${cr.topAutomations.map((a, i) => `${i + 1}. ${a.name} — saves ~${a.hoursSaved} hrs/wk [${a.priority}]`).join("\n")}\n\nRecommended entry point: ${cr.recommendedEntry}`;
                       return (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-slate-300 text-sm font-medium">Tool Chaos Score</p>
-                              <p className="text-slate-500 text-xs">Estimated operational overhead</p>
+                              <p className="text-slate-500 text-xs">Powered by DeepSeek R1</p>
                             </div>
                             <div className="text-right">
-                              <div className={`text-2xl font-bold ${chaos.color}`}>{chaos.score}</div>
-                              <div className={`text-xs ${chaos.color}`}>{chaos.label}</div>
+                              <div className={`text-2xl font-bold ${col}`}>{cr.score}</div>
+                              <div className={`text-xs ${col}`}>{cr.label}</div>
                             </div>
                           </div>
                           <div className="w-full bg-slate-800 rounded-full h-1.5">
-                            <div
-                              className={`h-1.5 rounded-full ${chaos.score >= 70 ? "bg-red-500" : chaos.score >= 50 ? "bg-amber-500" : "bg-yellow-500"}`}
-                              style={{ width: `${chaos.score}%` }}
-                            />
+                            <div className={`h-1.5 rounded-full ${bar}`} style={{ width: `${cr.score}%` }} />
                           </div>
+                          <p className="text-slate-300 text-sm">{cr.summary}</p>
                           <div className="bg-slate-800/60 rounded-lg px-3 py-2.5 text-sm text-slate-300">
-                            Estimated <span className="text-white font-semibold">{chaos.weeklyCost} hrs/week</span> lost to manual work ={" "}
-                            <span className="text-amber-300 font-semibold">${(chaos.weeklyCost * 75 * 4).toLocaleString()}/month</span> in unbillable overhead
+                            Estimated <span className="text-white font-semibold">{cr.weeklyHoursLost} hrs/week</span> lost ={" "}
+                            <span className="text-amber-300 font-semibold">${cr.monthlyRevenueImpact.toLocaleString()}/month</span> in unbillable overhead
                           </div>
                           <div className="space-y-1.5">
-                            <p className="text-slate-500 text-xs uppercase tracking-wide">Top automations to deploy</p>
-                            {chaos.topAutos.map((a, i) => (
-                              <div key={i} className="flex items-center gap-2 text-sm">
-                                <span className="text-purple-400 font-bold text-xs w-4">{i + 1}.</span>
-                                <span className="text-slate-300">{a}</span>
+                            <p className="text-slate-500 text-xs uppercase tracking-wide">What is driving it</p>
+                            {cr.drivers.map((d, i) => (
+                              <div key={i} className="flex items-start gap-2 text-sm">
+                                <span className="text-amber-400 font-bold text-xs mt-0.5 shrink-0">•</span>
+                                <span className="text-slate-300">{d}</span>
                               </div>
                             ))}
                           </div>
-                          <button
-                            onClick={() => copyText(
-                              `Tool Chaos Score for ${c.business_name ?? "this business"}: ${chaos.score}/100 (${chaos.label})\n\nEstimated ${chaos.weeklyCost} hrs/week lost = $${(chaos.weeklyCost * 75 * 4).toLocaleString()}/month in overhead.\n\nTop automations:\n${chaos.topAutos.map((a, i) => `${i + 1}. ${a}`).join("\n")}`,
-                              `chaos-${c.session_id}`
-                            )}
-                            className="text-xs text-slate-400 hover:text-purple-300 flex items-center gap-1"
-                          >
-                            {copied === `chaos-${c.session_id}` ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                            Copy score for client
-                          </button>
+                          <div className="space-y-1.5">
+                            <p className="text-slate-500 text-xs uppercase tracking-wide">Top automations to deploy</p>
+                            {cr.topAutomations.map((a, i) => (
+                              <div key={i} className="flex items-center justify-between text-sm bg-slate-800/40 rounded-lg px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-purple-400 font-bold text-xs w-4">{i + 1}.</span>
+                                  <span className="text-slate-300">{a.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                  <span className="text-cyan-400 text-xs">~{a.hoursSaved} hrs/wk</span>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${a.priority === "High" ? "bg-red-500/20 text-red-400" : a.priority === "Medium" ? "bg-amber-500/20 text-amber-400" : "bg-slate-700 text-slate-400"}`}>
+                                    {a.priority}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg px-3 py-2.5 space-y-1">
+                            <p className="text-purple-300 text-xs uppercase tracking-wide font-medium">Recommended entry point</p>
+                            <p className="text-slate-300 text-sm">{cr.recommendedEntry}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => copyText(copyStr, `chaos-${c.session_id}`)}
+                              className="text-xs text-slate-400 hover:text-purple-300 flex items-center gap-1"
+                            >
+                              {copied === `chaos-${c.session_id}` ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                              Copy full report
+                            </button>
+                            <button
+                              onClick={() => {
+                                setChaosResults((prev) => { const n = {...prev}; delete n[c.session_id]; return n; });
+                                fetchChaosScore(c);
+                              }}
+                              className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 ml-2"
+                            >
+                              <Loader2 className="w-3 h-3" /> Regenerate
+                            </button>
+                          </div>
                         </div>
                       );
                     })()}
