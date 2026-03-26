@@ -71,8 +71,8 @@ export async function GET() {
     const results: { migration: string; status: string }[] = [];
     for (const m of migrations) {
       try {
-        // neon() uses direct call syntax for raw strings (not .unsafe())
-        await sql(m, []);
+        // neon() is a tagged-template function; cast single-element array to satisfy TS
+        await sql([m] as unknown as TemplateStringsArray);
         results.push({ migration: m.slice(0, 60), status: "ok" });
       } catch (err) {
         results.push({ migration: m.slice(0, 60), status: String(err).slice(0, 100) });

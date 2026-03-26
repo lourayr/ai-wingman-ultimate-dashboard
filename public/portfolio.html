@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ray Robinson — AI Wingman Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #C9A84C;
+      --gold-light: #E8C96A;
+      --gold-dim: #8A6E2F;
+      --dark: #0A0A0F;
+      --dark-2: #111118;
+      --dark-3: #1A1A26;
+      --dark-4: #22223A;
+      --text: #E8E8F0;
+      --text-dim: #9090A8;
+      --accent-teal: #4ECDC4;
+      --accent-violet: #7B68EE;
+      --accent-rose: #E8A0A0;
+      --radius: 16px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: rgba(10,10,15,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem; font-weight: 700;
+      color: var(--gold); letter-spacing: 0.04em;
+    }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a {
+      color: var(--text-dim); text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 8rem 2rem 5rem;
+      position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(78,205,196,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 20% 60%, rgba(123,104,238,0.05) 0%, transparent 60%);
+    }
+    .hero-eyebrow {
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.2rem;
+      position: relative; z-index: 1;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 700; line-height: 1.1;
+      color: var(--text); max-width: 820px;
+      position: relative; z-index: 1;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 span { color: var(--gold); }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text-dim); max-width: 640px;
+      position: relative; z-index: 1;
+      margin-bottom: 2.5rem;
+    }
+    .hero-tags {
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+      justify-content: center;
+      position: relative; z-index: 1;
+      margin-bottom: 3rem;
+    }
+    .tag {
+      padding: 0.35rem 1rem; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 500;
+      letter-spacing: 0.04em;
+      border: 1px solid rgba(201,168,76,0.3);
+      color: var(--gold-light);
+      background: rgba(201,168,76,0.06);
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 2.2rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+      color: var(--dark); font-weight: 700; font-size: 0.95rem;
+      border-radius: 999px; text-decoration: none;
+      position: relative; z-index: 1;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(201,168,76,0.25);
+      cursor: pointer; border: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .hero-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(201,168,76,0.4);
+    }
+
+    /* WORK SECTION */
+    #work {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #work.open { max-height: 9999px; }
+    .work-inner { padding: 5rem 2rem 4rem; }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 700; color: var(--text);
+      margin-bottom: 1rem; line-height: 1.2;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--text-dim);
+      max-width: 600px; margin-bottom: 3.5rem;
+    }
+    .divider {
+      width: 60px; height: 2px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      margin: 1.2rem 0 1.5rem;
+    }
+
+    /* STATS BAR */
+    .stats-bar {
+      background: var(--dark-3);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 2rem;
+      margin-bottom: 4rem;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4rem; font-weight: 700;
+      color: var(--gold); display: block;
+    }
+    .stat-label {
+      font-size: 0.8rem; color: var(--text-dim);
+      font-weight: 500; letter-spacing: 0.04em;
+    }
+
+    /* PROJECTS GRID */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.8rem;
+      margin-bottom: 4rem;
+    }
+    .project-card {
+      background: var(--dark-3);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+      display: flex; flex-direction: column;
+    }
+    .project-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(201,168,76,0.3);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .project-card.featured {
+      grid-column: 1 / -1;
+      flex-direction: row;
+    }
+    .project-card.featured .card-visual {
+      width: 340px; min-width: 340px; height: auto;
+    }
+    @media (max-width: 720px) {
+      .project-card.featured { flex-direction: column; }
+      .project-card.featured .card-visual { width: 100%; min-width: unset; height: 200px; }
+    }
+
+    /* CARD VISUALS */
+    .card-visual {
+      height: 200px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .card-visual.automation { background: linear-gradient(135deg, #0D1B2A 0%, #1A2A3A 50%, #0A1520 100%); }
+    .card-visual.crystals   { background: linear-gradient(135deg, #1A0A2E 0%, #2D1B4E 50%, #1A0A2E 100%); }
+    .card-visual.healing    { background: linear-gradient(135deg, #0A1A1A 0%, #0D2B2B 50%, #0A1A1A 100%); }
+    .card-visual.navi       { background: linear-gradient(135deg, #1A0A0A 0%, #2B1010 50%, #1A0A0A 100%); }
+    .card-visual.metta      { background: linear-gradient(135deg, #0A0A1A 0%, #10103A 50%, #0A0A1A 100%); }
+    .card-visual.funding    { background: linear-gradient(135deg, #0A1A0A 0%, #102B10 50%, #0A1A0A 100%); }
+    .card-visual.golden     { background: linear-gradient(135deg, #1A1200 0%, #2B1E00 50%, #1A1200 100%); }
+
+    .pulse-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent-teal);
+      box-shadow: 0 0 0 0 rgba(78,205,196,0.6);
+      animation: pulse 2s infinite;
+      position: absolute; top: 12px; right: 12px;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(78,205,196,0.6); }
+      70%  { box-shadow: 0 0 0 10px rgba(78,205,196,0); }
+      100% { box-shadow: 0 0 0 0 rgba(78,205,196,0); }
+    }
+
+    .auto-diagram {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.3rem; width: 90%;
+    }
+    .auto-row { display: flex; align-items: center; gap: 0.4rem; width: 100%; }
+    .auto-node {
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.35);
+      border-radius: 8px; padding: 0.3rem 0.6rem;
+      font-size: 0.6rem; font-weight: 600;
+      color: var(--gold-light); white-space: nowrap; flex-shrink: 0;
+    }
+    .auto-node.teal   { background: rgba(78,205,196,0.1);  border-color: rgba(78,205,196,0.35);  color: var(--accent-teal); }
+    .auto-node.violet { background: rgba(123,104,238,0.1); border-color: rgba(123,104,238,0.35); color: var(--accent-violet); }
+    .auto-arrow { color: var(--text-dim); font-size: 0.7rem; flex-shrink: 0; }
+
+    .crystal-grid {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 0.5rem; padding: 1rem;
+    }
+    .crystal-chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(180,120,255,0.25);
+      border-radius: 8px; padding: 0.4rem 0.3rem;
+      text-align: center; font-size: 0.55rem;
+      color: rgba(200,160,255,0.8); font-weight: 500;
+    }
+    .crystal-chip .icon { font-size: 1.1rem; display: block; margin-bottom: 0.15rem; }
+
+    .card-body { padding: 1.5rem; flex: 1; display: flex; flex-direction: column; }
+    .card-client {
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 0.4rem;
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem; font-weight: 600;
+      color: var(--text); margin-bottom: 0.6rem; line-height: 1.3;
+    }
+    .card-desc {
+      font-size: 0.88rem; color: var(--text-dim);
+      line-height: 1.65; margin-bottom: 1.2rem; flex: 1;
+    }
+    .card-outcomes { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.2rem; }
+    .outcome { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--text); }
+    .outcome-icon { color: var(--gold); font-size: 0.85rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.2rem; }
+    .card-tag {
+      font-size: 0.68rem; font-weight: 500;
+      padding: 0.2rem 0.65rem; border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-dim);
+    }
+    .card-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--gold); text-decoration: none;
+      border-bottom: 1px solid rgba(201,168,76,0.3);
+      padding-bottom: 0.1rem;
+      transition: color 0.2s, border-color 0.2s;
+      align-self: flex-start;
+    }
+    .card-link:hover { color: var(--gold-light); border-color: var(--gold-light); }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.2rem 0.7rem; border-radius: 999px;
+      margin-bottom: 0.8rem;
+    }
+    .badge.live     { background: rgba(78,205,196,0.15);  color: var(--accent-teal);   border: 1px solid rgba(78,205,196,0.3); }
+    .badge.pilot    { background: rgba(123,104,238,0.15); color: var(--accent-violet); border: 1px solid rgba(123,104,238,0.3); }
+    .badge.audit    { background: rgba(232,160,160,0.15); color: var(--accent-rose);   border: 1px solid rgba(232,160,160,0.3); }
+    .badge.strategy { background: rgba(201,168,76,0.15);  color: var(--gold-light);    border: 1px solid rgba(201,168,76,0.3); }
+
+    .method-strip {
+      background: linear-gradient(135deg, var(--dark-3), var(--dark-4));
+      border: 1px solid rgba(201,168,76,0.12);
+      border-radius: var(--radius);
+      padding: 3rem 2.5rem;
+      margin-bottom: 4rem;
+    }
+    .method-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem; margin-top: 2rem;
+    }
+    .method-step { display: flex; flex-direction: column; gap: 0.5rem; }
+    .step-num { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; color: var(--gold); text-transform: uppercase; }
+    .step-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .step-desc { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; }
+
+    .wins-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.2rem; margin-bottom: 4rem;
+    }
+    .win-card {
+      background: var(--dark-3);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; padding: 1.4rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .win-card:hover { border-color: rgba(201,168,76,0.2); transform: translateY(-3px); }
+    .win-icon { font-size: 1.6rem; margin-bottom: 0.6rem; }
+    .win-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+    .win-desc { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; }
+
+    .cta-section {
+      text-align: center; padding: 5rem 2rem;
+      background: linear-gradient(180deg, transparent, rgba(201,168,76,0.04), transparent);
+    }
+    .cta-section h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700; color: var(--text); margin-bottom: 1rem;
+    }
+    .cta-section p {
+      font-size: 1.05rem; color: var(--text-dim);
+      max-width: 520px; margin: 0 auto 2.5rem;
+    }
+    .cta-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 1rem 2.5rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+      color: var(--dark); font-weight: 700; font-size: 1rem;
+      border-radius: 999px; text-decoration: none;
+      box-shadow: 0 6px 28px rgba(201,168,76,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(201,168,76,0.45); }
+
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 2rem; text-align: center;
+      font-size: 0.8rem; color: var(--text-dim);
+    }
+    footer span { color: var(--gold); }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">Ray Robinson</div>
+    <div class="nav-links">
+      <a onclick="openWork()">Work</a>
+      <a onclick="openWork()">Method</a>
+      <a onclick="openWork()">Wins</a>
+      <a href="http://www.linkedin.com/in/louray" target="_blank">Let's Talk</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <p class="hero-eyebrow">AI Wingman · Strategic Partner · Conscious Leader</p>
+    <h1>I build the systems<br/>that <span>scale your vision</span></h1>
+    <p class="hero-sub">West Point to Pentagon thought leader and trained strategist. AI-accelerated operator. I partner with founders, healers, and movement leaders to remove the noise and turn ideas into revenue-generating reality, fast.</p>
+    <div class="hero-tags">
+      <span class="tag">AI Automation</span>
+      <span class="tag">Revenue Strategy</span>
+      <span class="tag">Brand Architecture</span>
+      <span class="tag">Launch Systems</span>
+      <span class="tag">Conscious Leadership</span>
+      <span class="tag">Neuroinclusive Design</span>
+    </div>
+    <button class="hero-cta" onclick="openWork()">See the Work ↓</button>
+  </section>
+
+  <!-- WORK — expands on click -->
+  <div id="work">
+    <div class="work-inner">
+      <div class="container">
+
+        <!-- STATS -->
+        <div class="stats-bar reveal">
+          <div class="stat-item"><span class="stat-num">5+</span><span class="stat-label">Client Verticals Served</span></div>
+          <div class="stat-item"><span class="stat-num">20+</span><span class="stat-label">AI-Accelerated Deliverables</span></div>
+          <div class="stat-item"><span class="stat-num">6x</span><span class="stat-label">Revenue Growth (Client Result)</span></div>
+          <div class="stat-item"><span class="stat-num">13</span><span class="stat-label">States + 3 Countries of Leadership</span></div>
+          <div class="stat-item"><span class="stat-num">∞</span><span class="stat-label">Systems Built to Outlast the Sprint</span></div>
+        </div>
+
+        <!-- PROJECTS -->
+        <p class="section-label">Featured Work</p>
+        <h2 class="section-title">From vision to velocity.</h2>
+        <div class="divider"></div>
+        <p class="section-sub">Each engagement is a partnership. I come in as a creative strategic co-pilot, build what's needed, and hand off systems that run without me.</p>
+
+        <div class="projects-grid">
+
+          <!-- 1. AUTOMATION (FEATURED) -->
+          <div class="project-card featured reveal">
+            <div class="card-visual automation">
+              <div class="pulse-dot"></div>
+              <div class="auto-diagram">
+                <div class="auto-row">
+                  <div class="auto-node">WooCommerce Order</div>
+                  <div class="auto-arrow">→</div>
+                  <div class="auto-node teal">Apps Script Trigger</div>
+                  <div class="auto-arrow">→</div>
+                  <div class="auto-node violet">Rules Engine</div>
+                </div>
+                <div style="display:flex;justify-content:center;color:rgba(201,168,76,0.4);font-size:0.9rem;margin:0.3rem 0;">↓</div>
+                <div class="auto-row" style="justify-content:center;gap:0.5rem;">
+                  <div class="auto-node">Inventory Check</div>
+                  <div class="auto-node teal">Fulfillment Route</div>
+                  <div class="auto-node violet">Customer Email</div>
+                </div>
+                <div style="display:flex;justify-content:center;color:rgba(201,168,76,0.4);font-size:0.9rem;margin:0.3rem 0;">↓</div>
+                <div class="auto-row" style="justify-content:center;">
+                  <div class="auto-node" style="background:rgba(201,168,76,0.2);border-color:rgba(201,168,76,0.6);">✓ Order Orchestrated</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge live">● Live System</span>
+              <div class="card-client">Golden Age Treasures</div>
+              <div class="card-title">BioCeutical Order Orchestrator</div>
+              <div class="card-desc">A fully automated order management system in Google Apps Script. Handles WooCommerce intake, applies a 40+ rule logic engine for routing, inventory flags, backorder handling, and multi-warehouse fulfillment, then fires customer notifications automatically.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>Eliminated manual processing for 100+ SKU catalog</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Real-time customer tracking on every status change</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>40+ business rules encoded, version-controlled, production-deployed</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>CEO Command Center dashboard surfacing live order intelligence</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">Google Apps Script</span>
+                <span class="card-tag">WooCommerce API</span>
+                <span class="card-tag">Automation Architecture</span>
+                <span class="card-tag">Ops Systems</span>
+              </div>
+              <a href="https://ai-wingman-ultimate-dashboard.vercel.app/ceo" target="_blank" class="card-link">View CEO Command Center →</a>
+            </div>
+          </div>
+
+          <!-- 2. CRYSTALS APP -->
+          <div class="project-card reveal">
+            <div class="card-visual crystals">
+              <div class="crystal-grid">
+                <div class="crystal-chip"><span class="icon">💎</span>Amethyst</div>
+                <div class="crystal-chip"><span class="icon">🔮</span>Selenite</div>
+                <div class="crystal-chip"><span class="icon">✨</span>Citrine</div>
+                <div class="crystal-chip"><span class="icon">🌙</span>Moonstone</div>
+                <div class="crystal-chip"><span class="icon">🪨</span>Obsidian</div>
+                <div class="crystal-chip"><span class="icon">💫</span>Labradorite</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge live">● Live App</span>
+              <div class="card-client">Golden Age Treasures</div>
+              <div class="card-title">Crystal Reference Printable App</div>
+              <div class="card-desc">High-value crystal purchases, from 40 to 400 lbs, demand more than a thumbnail. This web-based reference tool gives buyers an immersive, print-ready guide to crystal properties, uses, and pairings, transforming a limited pre-checkout experience into a confident, informed buying decision at any scale.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>Elevates pre-purchase confidence for high-ticket crystal buyers</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Printable format drives repeat engagement, increased purchases, and gifting</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">Web App</span>
+                <span class="card-tag">Customer Experience</span>
+                <span class="card-tag">Google Apps Script</span>
+              </div>
+              <a href="https://script.google.com/macros/s/AKfycbyjeSgNYZfPGJ_sjJrIU-IWg24p_mwNtN-2Z-L1UecXlbGuumQrkoB_o_dOhEftJqEwGA/exec" target="_blank" class="card-link">Open the App →</a>
+            </div>
+          </div>
+
+          <!-- 3. KRYSTIC ENERGY -->
+          <div class="project-card reveal">
+            <div class="card-visual healing">
+              <div style="text-align:center;padding:1rem;">
+                <div style="font-size:2.5rem;margin-bottom:0.5rem;">🌿</div>
+                <div style="font-size:0.65rem;color:var(--accent-teal);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">Healing Practice Launch</div>
+                <div style="display:flex;gap:0.5rem;margin-top:0.8rem;justify-content:center;flex-wrap:wrap;">
+                  <div style="background:rgba(78,205,196,0.1);border:1px solid rgba(78,205,196,0.25);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.6rem;color:var(--accent-teal);">Website Copy</div>
+                  <div style="background:rgba(78,205,196,0.1);border:1px solid rgba(78,205,196,0.25);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.6rem;color:var(--accent-teal);">90-Day Plan</div>
+                  <div style="background:rgba(78,205,196,0.1);border:1px solid rgba(78,205,196,0.25);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.6rem;color:var(--accent-teal);">Onboarding</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge pilot">◆ Pilot Partnership</span>
+              <div class="card-client">Krystic Energy Systems</div>
+              <div class="card-title">Healing Practice Launch — Full Foundation</div>
+              <div class="card-desc">COO-style strategic partnership to launch Deborah's spiritual healing practice from zero. Full handoff-ready package: website copy, brand narrative, 90-day launch blueprint, 30-day Instagram content bank, onboarding sequences, and workflow map.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>Full website copy (Home, About, Services, FAQ, Contact)</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>3-phase launch blueprint with weekly cadence</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>30-day IG content bank + inquiry email sequences</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Delivered in 4 weeks, ~20 hours total</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">Brand Strategy</span>
+                <span class="card-tag">Launch Systems</span>
+                <span class="card-tag">AI Copywriting</span>
+                <span class="card-tag">Healing Economy</span>
+              </div>
+              <a href="https://gamma.app/docs/Krystic-Energy-Systems-98iy0z5pjv0usjg" target="_blank" class="card-link">View Project Brief →</a>
+            </div>
+          </div>
+
+          <!-- 4. NAVI PROMO -->
+          <div class="project-card reveal">
+            <div class="card-visual navi">
+              <div style="text-align:center;padding:1rem;">
+                <div style="font-size:2rem;margin-bottom:0.4rem;">📡</div>
+                <div style="font-size:0.6rem;color:var(--accent-rose);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">Revenue Audit</div>
+                <div style="background:rgba(232,160,160,0.08);border:1px solid rgba(232,160,160,0.2);border-radius:8px;padding:0.5rem 0.8rem;">
+                  <div style="font-size:1.4rem;font-weight:800;color:var(--accent-rose);">20,162</div>
+                  <div style="font-size:0.55rem;color:var(--text-dim);">Followers · Untapped Revenue</div>
+                </div>
+                <div style="margin-top:0.5rem;font-size:0.6rem;color:var(--text-dim);">Potential: <span style="color:var(--accent-rose);font-weight:700;">$150 product · 40% conversion</span></div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge audit">◈ Monetization Audit</span>
+              <div class="card-client">Navi Promo (@navipromo)</div>
+              <div class="card-title">Creator Monetization Audit + Revenue Blueprint</div>
+              <div class="card-desc">Full monetization audit for a live streaming creator with 20K+ followers. Identified the hidden curriculum given away free every morning, quantified the revenue potential, and designed two productized offers launchable immediately.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>Uncovered pent-up demand in live streaming education niche</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Designed Stream-to-Cash Blueprint course from existing content</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Creator Fast-Track: $150 consulting sprint, zero build time to launch</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">Creator Economy</span>
+                <span class="card-tag">Revenue Architecture</span>
+                <span class="card-tag">Audience Monetization</span>
+                <span class="card-tag">Product Design</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. METTA MENTOR -->
+          <div class="project-card reveal">
+            <div class="card-visual metta">
+              <div style="text-align:center;padding:1rem;">
+                <div style="font-size:2rem;margin-bottom:0.4rem;">🧠</div>
+                <div style="font-size:0.6rem;color:var(--accent-violet);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">Platform Build</div>
+                <div style="display:flex;flex-direction:column;gap:0.3rem;width:100%;">
+                  <div style="background:rgba(123,104,238,0.1);border:1px solid rgba(123,104,238,0.25);border-radius:6px;padding:0.25rem 0.5rem;font-size:0.58rem;color:var(--accent-violet);text-align:left;">⬡ CEO Command Center</div>
+                  <div style="background:rgba(123,104,238,0.1);border:1px solid rgba(123,104,238,0.25);border-radius:6px;padding:0.25rem 0.5rem;font-size:0.58rem;color:var(--accent-violet);text-align:left;">⬡ Shadow Ops Dashboard</div>
+                  <div style="background:rgba(123,104,238,0.1);border:1px solid rgba(123,104,238,0.25);border-radius:6px;padding:0.25rem 0.5rem;font-size:0.58rem;color:var(--accent-violet);text-align:left;">⬡ Neuroinclusive Leadership Site</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge live">● Live Platform</span>
+              <div class="card-client">Metta Mentor</div>
+              <div class="card-title">CEO Command Center + Neuroinclusive Leadership Platform</div>
+              <div class="card-desc">Built the full digital infrastructure: a live CEO Command Center aggregating email, calendar, orders, and AI intelligence into one morning briefing, plus the mettamentor.com website positioning neuroinclusive leadership for the Golden Age.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>Live dashboard: real-time email, meetings, orders, AI brief</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Website live: "Every mind belongs" positioning</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Multi-module app: CEO, Shadow Ops, Onboarding, Campaign flows</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">Platform Architecture</span>
+                <span class="card-tag">AI Dashboard</span>
+                <span class="card-tag">Leadership Brand</span>
+                <span class="card-tag">Vercel Deploy</span>
+              </div>
+              <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                <a href="https://ai-wingman-ultimate-dashboard.vercel.app/ceo" target="_blank" class="card-link">CEO Dashboard →</a>
+                <a href="https://mettamentor.com/" target="_blank" class="card-link">Live Site →</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. SMITH ROBINSON FUNDING -->
+          <div class="project-card reveal">
+            <div class="card-visual funding">
+              <div style="text-align:center;padding:1rem;">
+                <div style="font-size:2rem;margin-bottom:0.4rem;">🎖️</div>
+                <div style="font-size:0.6rem;color:#7EC87E;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">Veteran Investors</div>
+                <div style="display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap;">
+                  <div style="background:rgba(126,200,126,0.1);border:1px solid rgba(126,200,126,0.25);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.58rem;color:#7EC87E;">Media Kit</div>
+                  <div style="background:rgba(126,200,126,0.1);border:1px solid rgba(126,200,126,0.25);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.58rem;color:#7EC87E;">eBook</div>
+                  <div style="background:rgba(126,200,126,0.1);border:1px solid rgba(126,200,126,0.25);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.58rem;color:#7EC87E;">Training</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge strategy">◇ Full Content Suite</span>
+              <div class="card-client">Smith Robinson Funding</div>
+              <div class="card-title">Path to Profit — Veteran Investor Launch Suite</div>
+              <div class="card-desc">Complete content and marketing infrastructure for a veteran-focused real estate investment program. Media kit, investor eBook, and training curriculum anchored in the F4 P2P System, targeting credit-challenged but income-strong investors ready to build wealth.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>Media kit positioning the F4 Path to Profit system</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>eBook addressing the 5 critical mistakes keeping investors stuck</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Training curriculum: Find, Fund, Fix, Flip framework</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">Real Estate</span>
+                <span class="card-tag">Veteran Community</span>
+                <span class="card-tag">Content Strategy</span>
+                <span class="card-tag">Course Design</span>
+              </div>
+              <a href="https://gamma.app/docs/Path-to-Profit-Your-First-Deal-in-30-Days-7kpdy3gf60e5re1" target="_blank" class="card-link">View Media Kit →</a>
+            </div>
+          </div>
+
+          <!-- 7. GOLDEN AGE LEADERS -->
+          <div class="project-card reveal">
+            <div class="card-visual golden">
+              <div style="text-align:center;padding:1rem;">
+                <div style="font-size:2rem;margin-bottom:0.4rem;">👑</div>
+                <div style="font-size:0.6rem;color:var(--gold);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">Leadership Movement</div>
+                <div style="display:flex;flex-direction:column;gap:0.3rem;">
+                  <div style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.58rem;color:var(--gold-light);">14-Day LinkedIn Ad Campaign</div>
+                  <div style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.58rem;color:var(--gold-light);">Workshop Architecture</div>
+                  <div style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.58rem;color:var(--gold-light);">JV Partner Promo Kit</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <span class="badge strategy">◇ Movement Strategy</span>
+              <div class="card-client">Golden Age Leaders</div>
+              <div class="card-title">LinkedIn Campaign + Workshop + JV Partner Kit</div>
+              <div class="card-desc">Full go-to-market infrastructure for the Golden Age Leadership movement: 14-day LinkedIn ad campaign, full workshop outline, JV partner promo kit for affiliate outreach, and AI-enabled book editing to sharpen the thought leadership positioning.</div>
+              <div class="card-outcomes">
+                <div class="outcome"><span class="outcome-icon">⚡</span>14-day LinkedIn ad sequence targeting conscious leaders</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>Full workshop strawman with session architecture</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>JV partner kit ready for outreach and co-promotion</div>
+                <div class="outcome"><span class="outcome-icon">⚡</span>AI-assisted book editing for leadership manuscript</div>
+              </div>
+              <div class="card-tags">
+                <span class="card-tag">LinkedIn Strategy</span>
+                <span class="card-tag">Workshop Design</span>
+                <span class="card-tag">JV Marketing</span>
+                <span class="card-tag">Thought Leadership</span>
+              </div>
+              <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                <a href="https://docs.google.com/document/d/1_x0DaTygdWadJY_HOutCo2ShoY398YMp2l_ld1BBs4c/edit?usp=sharing" target="_blank" class="card-link">LinkedIn Campaign →</a>
+                <a href="https://docs.google.com/document/d/1Pvao7P38yoZYr1CJgTH9wwjMVF7RbLR5eTUBYIeEOyA/edit?usp=sharing" target="_blank" class="card-link">Promo Kit →</a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- METHOD -->
+        <div class="method-strip reveal">
+          <p class="section-label">The AI Wingman Method™</p>
+          <h2 class="section-title" style="margin-bottom:0.5rem;">How I work.</h2>
+          <p style="color:var(--text-dim);font-size:0.95rem;max-width:540px;">Five moves. Every engagement. Repeatable results.</p>
+          <div class="method-steps">
+            <div class="method-step"><span class="step-num">Step 01</span><span class="step-title">Diagnose</span><span class="step-desc">Map the gap between where you are and where you need to be. Identify the highest-leverage move.</span></div>
+            <div class="method-step"><span class="step-num">Step 02</span><span class="step-title">Design</span><span class="step-desc">Architect the system, offer, or campaign. Strategy first, then structure, then assets.</span></div>
+            <div class="method-step"><span class="step-num">Step 03</span><span class="step-title">Build</span><span class="step-desc">AI-accelerated execution. Weeks of work compressed into days without sacrificing quality or voice.</span></div>
+            <div class="method-step"><span class="step-num">Step 04</span><span class="step-title">Deploy</span><span class="step-desc">Launch with a plan. Every deliverable is handoff-ready so you can run it without me.</span></div>
+            <div class="method-step"><span class="step-num">Step 05</span><span class="step-title">Evolve</span><span class="step-desc">Measure, learn, iterate. The system improves. So does your capacity.</span></div>
+          </div>
+        </div>
+
+        <!-- WINS -->
+        <p class="section-label">Background & Wins</p>
+        <h2 class="section-title">The foundation behind the work.</h2>
+        <div class="divider"></div>
+        <p class="section-sub" style="margin-bottom:2rem;">Three decades of leadership across military, corporate, nonprofit, and entrepreneurial contexts. The range is the edge.</p>
+        <div class="wins-grid">
+
+          <div class="win-card reveal">
+            <div class="win-icon">🎓</div>
+            <div class="win-title">West Point Graduate</div>
+            <div class="win-desc">From the U.S. Military Academy to the Pentagon. Disciplined systems thinking, high-stakes decision-making, and leading under pressure, baked in from day one.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">📚</div>
+            <div class="win-title">Best-Selling Author</div>
+            <div class="win-desc">Published author on leadership, consciousness, and human potential. Writing as a tool for systemic change and ancestral reclamation.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🎯</div>
+            <div class="win-title">Masters in Leadership & Theology</div>
+            <div class="win-desc">Bridges disciplined strategy with spiritual wisdom. A rare synthesis that shows up in every client engagement.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🌍</div>
+            <div class="win-title">13 States + 3 Countries</div>
+            <div class="win-desc">Leadership shaped by constant movement across Europe, Korea, and the U.S. Cross-cultural fluency is a core competency, not a credential.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🏛️</div>
+            <div class="win-title">Pentagon to Corporate Strategy</div>
+            <div class="win-desc">Enterprise-level strategic planning, P&L ownership, and organizational transformation. Pentagon-level strategy and boardroom rigor applied to founder-stage challenges.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🤝</div>
+            <div class="win-title">Nonprofit & Community Leadership</div>
+            <div class="win-desc">Built and led organizations centered on diversity, inclusion, and purpose-driven impact. Systemic change is the operating model.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🧬</div>
+            <div class="win-title">Neuroinclusive Leadership Pioneer</div>
+            <div class="win-desc">Reframes ADHD as a "Higher Dimension" superpower due to superior leadership success. Pattern recognition, rapid synthesis, and nonlinear problem-solving as strategic advantages.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🤖</div>
+            <div class="win-title">AI-Accelerated Operator</div>
+            <div class="win-desc">Builds production-grade AI systems, dashboards, and automation workflows. Not a prompt engineer, a strategic architect who uses AI as leverage.</div>
+          </div>
+
+          <div class="win-card reveal">
+            <div class="win-icon">🌱</div>
+            <div class="win-title">Ontocracy & New Earth Vision</div>
+            <div class="win-desc">Reconnects people to nature, ancestral memory, and 5D consciousness. Leadership from wholeness, not woundedness. The work is personal and planetary.</div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <section id="contact" class="cta-section">
+    <h2>Ready to build something real?</h2>
+    <p>I take on a small number of strategic partnerships at a time. If your vision is bigger than your current capacity, let's close that gap.</p>
+    <a href="http://www.linkedin.com/in/louray" target="_blank" class="cta-btn">Start the Conversation →</a>
+  </section>
+
+  <footer>
+    <p>© 2026 <span>Ray Robinson</span> · AI Wingman · Ashland, OR · Built with intention.</p>
+  </footer>
+
+  <script>
+    function openWork() {
+      const work = document.getElementById('work');
+      work.classList.add('open');
+      setTimeout(() => {
+        work.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+      triggerReveals();
+    }
+
+    function triggerReveals() {
+      const reveals = document.querySelectorAll('.reveal');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+      }, { threshold: 0.08 });
+      reveals.forEach(el => observer.observe(el));
+    }
+
+    triggerReveals();
+  </script>
+
+</body>
+</html>

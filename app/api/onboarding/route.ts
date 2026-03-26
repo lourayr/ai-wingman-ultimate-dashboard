@@ -13,7 +13,9 @@ async function runMigrations() {
   const sql = getDb();
   for (const col of V2_COLUMNS) {
     try {
-      await sql(`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS ${col} TEXT`, []);
+      const q = `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS ${col} TEXT`;
+      // neon() is a tagged-template function; cast single-element array to satisfy TS
+      await sql([q] as unknown as TemplateStringsArray);
     } catch { /* already exists */ }
   }
 }

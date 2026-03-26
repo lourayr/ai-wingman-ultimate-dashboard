@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, LayoutDashboard, Users, Zap, Target, Settings, Sparkles } from "lucide-react";
+import { Brain, LayoutDashboard, Users, Zap, Target, Settings, Sparkles, BookOpen } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/gpts", label: "AI Tools", icon: Sparkles },
   { href: "/onboarding", label: "Onboarding", icon: Users },
   { href: "/ops", label: "Ops", icon: Settings },
+  { href: "/portfolio", label: "Portfolio", icon: BookOpen },
 ];
 
 export default function Navigation() {
