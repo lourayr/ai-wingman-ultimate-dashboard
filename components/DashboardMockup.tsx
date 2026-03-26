@@ -238,7 +238,7 @@ export default function DashboardMockup() {
             <p className="text-slate-400 text-sm mt-0.5">CEO Operating System — 6-module intelligence hub</p>
           </div>
           <a
-            href="/onboarding"
+            href="/onboarding?new=1"
             className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
           >
             <Users className="w-4 h-4" />

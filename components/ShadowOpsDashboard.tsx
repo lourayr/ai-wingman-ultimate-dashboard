@@ -67,7 +67,7 @@ interface ChaosResult {
   recommendedEntry: string;
 }
 
-type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "gpts" | "form" | "dna";
+type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "gpts" | "form" | "dna" | "ghostwriter" | "synthesise";
 
 function chaosColor(score: number) {
   if (score >= 81) return "text-red-400";
@@ -275,6 +275,8 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
     { id: "monetize", label: "Monetize" },
     { id: "chaos", label: "Chaos Score" },
     { id: "gpts", label: "GPT Tools" },
+    { id: "ghostwriter", label: "GhostwriterOS" },
+    { id: "synthesise", label: "Synthesise" },
     { id: "form", label: "Full Form" },
     { id: "dna", label: "DNA" },
   ];
@@ -554,6 +556,59 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
                         label="Full Profile (copy before launching GPT)"
                       />
                     )}
+
+                    {section === "ghostwriter" && (
+                      <div className="space-y-3">
+                        <div className="bg-slate-800/60 rounded-lg p-3 space-y-1">
+                          <p className="text-slate-400 text-xs">Copy your full client brief, then open GhostwriterOS and paste into the DNA builder.</p>
+                        </div>
+                        <button
+                          onClick={() => copyText(profile, `gw-${c.session_id}`)}
+                          className="flex items-center gap-2 w-full justify-center border border-slate-700 text-slate-300 py-2 rounded-lg text-sm hover:border-purple-500/40 hover:text-purple-300 transition-colors"
+                        >
+                          {copied === `gw-${c.session_id}` ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                          {copied === `gw-${c.session_id}` ? "Brief copied!" : "Copy Full Brief"}
+                        </button>
+                        <a
+                          href="https://dashboard.ghostwriteros.ai/dashboard?tab=DNAs"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => copyText(profile, `gw-${c.session_id}`)}
+                          className="flex items-center gap-2 w-full justify-center bg-gradient-to-r from-purple-600 to-cyan-600 text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Open GhostwriterOS →
+                        </a>
+                        <p className="text-slate-600 text-xs text-center">Brief auto-copies on launch</p>
+                      </div>
+                    )}
+
+                    {section === "synthesise" && (
+                      <div className="space-y-3">
+                        <div className="bg-slate-800/60 rounded-lg p-3 space-y-1">
+                          <p className="text-slate-400 text-xs">Copy your full client brief, then open Synthesise to run the coaching offer strategy flow.</p>
+                        </div>
+                        <button
+                          onClick={() => copyText(profile, `syn-${c.session_id}`)}
+                          className="flex items-center gap-2 w-full justify-center border border-slate-700 text-slate-300 py-2 rounded-lg text-sm hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
+                        >
+                          {copied === `syn-${c.session_id}` ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                          {copied === `syn-${c.session_id}` ? "Brief copied!" : "Copy Full Brief"}
+                        </button>
+                        <a
+                          href="https://app.synthesise.ai/flow/0f665384-04db-4a71-8269-4a31855350dd/coaching-offer/d623e422-d45b-45e9-9d14-521a03e49f79"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => copyText(profile, `syn-${c.session_id}`)}
+                          className="flex items-center gap-2 w-full justify-center bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Open Synthesise →
+                        </a>
+                        <p className="text-slate-600 text-xs text-center">Brief auto-copies on launch</p>
+                      </div>
+                    )}
+
                     {section === "form" && (
                       <div className="space-y-1.5 text-sm">
                         {([

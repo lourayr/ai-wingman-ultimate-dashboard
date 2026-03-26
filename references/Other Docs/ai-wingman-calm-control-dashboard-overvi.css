@@ -1,0 +1,1389 @@
+ai-wingman-calm-control-dashboard-overview
+# AI Wingman Client Dashboard - Live Strawman (Phase 5)
+
+I'll build you a **working HTML dashboard TODAY** that you can show clients immediately, with clear notes for Claude Code to build the Next.js version.
+
+````artifact
+id: ai-wingman-client-dashboard
+name: AI Wingman Calm Control CEO Dashboard
+type: html
+content: |-
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Control CEO Dashboard | AI Wingman</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary-purple: #8b5cf6;
+        --primary-cyan: #06b6d4;
+        --accent-teal: #22d3ee;
+        --dark-bg: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.6);
+        --border-color: rgba(148, 163, 184, 0.2);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        background: linear-gradient(135deg, var(--dark-bg) 0%, #1e293b 100%);
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+
+      /* IMPLEMENTATION NOTE: This is a strawman/mock dashboard
+         OpenClaw sub-agents will:
+         1. Email Agent: Pull unread count, VIP messages, urgent items from Gmail API
+         2. Calendar Agent: Fetch today's meetings, conflicts, focus blocks from Google Calendar API
+         3. Task Agent: Aggregate tasks from Notion, Asana, ClickUp via their APIs
+         4. Revenue Agent: Pull Stripe/PayPal transactions, WooCommerce orders
+         5. Client Agent: Sync Catalyst CRM pipeline, client health scores
+         6. Tool Chaos Agent: Monitor active tabs/apps, suggest consolidation
+         7. AI Brief Agent: Generate morning synthesis using OpenAI/Claude API
+         8. Automation Agent: Track Make/Zapier workflows, suggest optimizations
+         
+         Each metric below will be replaced with live API data in Next.js version */
+
+      .container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+
+      /* Header */
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: var(--card-bg);
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        backdrop-filter: blur(10px);
+      }
+
+      .header-left h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-purple) 0%, var(--accent-teal) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.25rem;
+      }
+
+      .header-left p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+      }
+
+      .header-right {
+        text-align: right;
+      }
+
+      .calm-score {
+        font-size: 3rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--success) 0%, var(--accent-teal) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+      }
+
+      .calm-label {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+      }
+
+      /* IMPLEMENTATION NOTE: Calm Score calculation
+         OpenClaw Calm Score Agent will:
+         - Email: (Inbox Zero = 100, 50+ unread = 0)
+         - Calendar: (No conflicts = 100, 3+ conflicts = 0)
+         - Tasks: (All prioritized = 100, 10+ urgent = 0)
+         - Tools: (8-12 active = 100, 30+ active = 0)
+         - Automation: (All workflows running = 100, 3+ broken = 0)
+         Formula: Average of 5 categories, weighted by founder priority */
+
+      /* Quick Stats Grid */
+      .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(139, 92, 246, 0.4);
+      }
+
+      .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .stat-icon {
+        font-size: 1.5rem;
+      }
+
+      .stat-trend {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+      }
+
+      .trend-up {
+        background: rgba(34, 197, 94, 0.2);
+        color: var(--success);
+      }
+
+      .trend-down {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger);
+      }
+
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+      }
+
+      .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+      }
+
+      /* Main Grid */
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .card-action {
+        color: var(--accent-teal);
+        font-size: 0.875rem;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .card-action:hover {
+        text-decoration: underline;
+      }
+
+      /* AI Morning Brief */
+      .brief-section {
+        margin-bottom: 1.5rem;
+      }
+
+      .brief-section h4 {
+        color: var(--primary-purple);
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .brief-item {
+        background: rgba(15, 23, 42, 0.6);
+        border-left: 3px solid var(--accent-teal);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .brief-item p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+
+      .brief-item strong {
+        color: var(--text-primary);
+      }
+
+      /* IMPLEMENTATION NOTE: AI Morning Brief Generation
+         OpenClaw AI Brief Agent will:
+         1. Aggregate data from all sub-agents
+         2. Use OpenAI GPT-4 or Claude to synthesize:
+            - Top 3 priorities (from calendar + tasks + client urgency)
+            - Key decisions needed (from email + Slack + CRM)
+            - Opportunities (from revenue trends + client pipeline)
+            - Risks/blockers (from automation failures + calendar conflicts)
+         3. Generate natural language summary
+         4. Update Notion database with brief
+         5. Send to Slack/Telegram if configured */
+
+      /* Priority Matrix */
+      .priority-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .priority-quadrant {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 8px;
+        padding: 1rem;
+        min-height: 120px;
+      }
+
+      .quadrant-header {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .urgent-important {
+        border-left: 3px solid var(--danger);
+      }
+
+      .urgent-important .quadrant-header {
+        color: var(--danger);
+      }
+
+      .not-urgent-important {
+        border-left: 3px solid var(--warning);
+      }
+
+      .not-urgent-important .quadrant-header {
+        color: var(--warning);
+      }
+
+      .urgent-not-important {
+        border-left: 3px solid var(--accent-teal);
+      }
+
+      .urgent-not-important .quadrant-header {
+        color: var(--accent-teal);
+      }
+
+      .not-urgent-not-important {
+        border-left: 3px solid var(--text-secondary);
+      }
+
+      .not-urgent-not-important .quadrant-header {
+        color: var(--text-secondary);
+      }
+
+      .task-item {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      }
+
+      .task-item:last-child {
+        border-bottom: none;
+      }
+
+      /* IMPLEMENTATION NOTE: Priority Matrix Auto-Population
+         OpenClaw Task Triage Agent will:
+         1. Pull all tasks from Notion, Asana, ClickUp, email flags
+         2. Use AI to categorize by urgency + importance:
+            - Urgency: deadline proximity, client/revenue impact
+            - Importance: strategic value, founder energy alignment
+         3. Auto-populate quadrants
+         4. Suggest delegation/automation for bottom quadrants */
+
+      /* Tool Chaos Monitor */
+      .tool-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .tool-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 6px;
+      }
+
+      .tool-name {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+      }
+
+      .tool-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .status-active {
+        background: rgba(34, 197, 94, 0.2);
+        color: var(--success);
+      }
+
+      .status-idle {
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--text-secondary);
+      }
+
+      .status-consolidate {
+        background: rgba(245, 158, 11, 0.2);
+        color: var(--warning);
+      }
+
+      /* IMPLEMENTATION NOTE: Tool Chaos Monitor
+         OpenClaw Tool Monitor Agent will:
+         1. Track browser tabs via browser extension API
+         2. Monitor app usage via system APIs (macOS/Windows)
+         3. Identify redundant tools (e.g., 3 PM tools, 4 chat apps)
+         4. Calculate "chaos score" based on:
+            - Number of active tools (target: 8-12)
+            - Context switches per hour
+            - Duplicate functionality
+         5. Suggest consolidation opportunities
+         6. Auto-close idle tabs after X minutes */
+
+      /* Calendar Overview */
+      .calendar-day {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .meeting-block {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-left: 3px solid var(--accent-teal);
+        border-radius: 6px;
+      }
+
+      .meeting-time {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--accent-teal);
+        min-width: 80px;
+      }
+
+      .meeting-details {
+        flex: 1;
+      }
+
+      .meeting-title {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+      }
+
+      .meeting-attendees {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .focus-block {
+        border-left-color: var(--success);
+        background: rgba(34, 197, 94, 0.1);
+      }
+
+      .focus-block .meeting-time {
+        color: var(--success);
+      }
+
+      /* IMPLEMENTATION NOTE: Calendar Intelligence
+         OpenClaw Calendar Agent will:
+         1. Fetch today's events from Google Calendar API
+         2. Identify conflicts (overlapping meetings)
+         3. Detect missing prep time before important meetings
+         4. Suggest focus blocks using Reclaim.ai API
+         5. Auto-decline low-priority meetings based on rules
+         6. Send prep reminders 15 min before meetings */
+
+      /* Client Pipeline */
+      .client-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .client-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 6px;
+      }
+
+      .client-info {
+        flex: 1;
+      }
+
+      .client-name {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .client-stage {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .client-health {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .health-score {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.875rem;
+      }
+
+      .health-high {
+        background: rgba(34, 197, 94, 0.2);
+        color: var(--success);
+      }
+
+      .health-medium {
+        background: rgba(245, 158, 11, 0.2);
+        color: var(--warning);
+      }
+
+      .health-low {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger);
+      }
+
+      /* IMPLEMENTATION NOTE: Client Health Scoring
+         OpenClaw Client Agent will:
+         1. Pull client data from Catalyst CRM API
+         2. Calculate health score based on:
+            - Last contact date (recency)
+            - Email response time
+            - Project progress vs. timeline
+            - Payment status
+            - Engagement level (opens, clicks, replies)
+         3. Flag at-risk clients (score < 60)
+         4. Suggest outreach actions
+         5. Auto-generate check-in emails via Benson */
+
+      /* Revenue Snapshot */
+      .revenue-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .revenue-metric {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 8px;
+      }
+
+      .revenue-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+      }
+
+      .revenue-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .revenue-chart {
+        height: 120px;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 8px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-around;
+        padding: 1rem;
+      }
+
+      .chart-bar {
+        width: 12%;
+        background: linear-gradient(180deg, var(--primary-purple) 0%, var(--accent-teal) 100%);
+        border-radius: 4px 4px 0 0;
+        transition: all 0.3s ease;
+      }
+
+      .chart-bar:hover {
+        opacity: 0.8;
+      }
+
+      /* IMPLEMENTATION NOTE: Revenue Intelligence
+         OpenClaw Revenue Agent will:
+         1. Pull transactions from Stripe API, PayPal API
+         2. Pull orders from WooCommerce REST API
+         3. Calculate:
+            - Today's revenue vs. yesterday
+            - Week-to-date vs. last week
+            - Month-to-date vs. last month
+            - MRR (for subscriptions)
+            - Average order value
+         4. Identify trends (up/down arrows)
+         5. Flag anomalies (sudden drops, spikes)
+         6. Generate mini-chart (last 7 days) */
+
+      /* Automation Status */
+      .automation-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .automation-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 6px;
+      }
+
+      .automation-name {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+      }
+
+      .automation-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .status-running {
+        background: var(--success);
+      }
+
+      .status-paused {
+        background: var(--warning);
+      }
+
+      .status-error {
+        background: var(--danger);
+      }
+
+      .automation-runs {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      /* IMPLEMENTATION NOTE: Automation Monitoring
+         OpenClaw Automation Agent will:
+         1. Monitor Make/Zapier workflows via APIs
+         2. Track execution status, error rates
+         3. Alert on failures (Slack/Telegram)
+         4. Suggest optimizations (e.g., combine steps)
+         5. Calculate time/cost savings
+         6. Auto-restart failed workflows if possible */
+
+      /* Quick Actions */
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+
+      .action-btn {
+        padding: 1rem;
+        background: linear-gradient(135deg, var(--primary-purple) 0%, var(--accent-teal) 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+      }
+
+      .action-btn.secondary {
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--text-primary);
+      }
+
+      /* IMPLEMENTATION NOTE: Quick Actions
+         Each button will trigger OpenClaw sub-agents:
+         - "Archive All Read" → Email Agent bulk archives
+         - "Block Focus Time" → Calendar Agent adds 2hr block
+         - "Generate Brief" → AI Brief Agent runs on-demand
+         - "Check Automations" → Automation Agent runs health check
+         - "Triage Inbox" → Email Agent categorizes by urgency */
+
+      /* Bottom Grid */
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+
+      /* Responsive */
+      @media (max-width: 1200px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .header {
+          flex-direction: column;
+          text-align: center;
+        }
+
+        .header-right {
+          text-align: center;
+          margin-top: 1rem;
+        }
+
+        .quick-stats {
+          grid-template-columns: 1fr;
+        }
+
+        .priority-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .revenue-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Loading States (for live data) */
+      .loading {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--accent-teal);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* IMPLEMENTATION NOTE: Loading States
+         When Next.js version fetches live data:
+         - Show loading spinner while APIs respond
+         - Use React Query for caching + auto-refresh
+         - Implement optimistic UI updates
+         - Add error boundaries for failed API calls */
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <h1>Good Morning, Ray 👋</h1>
+          <p>Friday, March 7, 2026 • Last updated: 6:00 AM PST</p>
+        </div>
+        <div class="header-right">
+          <div class="calm-score">87</div>
+          <div class="calm-label">Calm Score</div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="quick-stats">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-icon">📧</span>
+            <span class="stat-trend trend-down">-12</span>
+          </div>
+          <div class="stat-value">8</div>
+          <div class="stat-label">Unread Emails</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-icon">📅</span>
+            <span class="stat-trend trend-up">+2</span>
+          </div>
+          <div class="stat-value">4</div>
+          <div class="stat-label">Meetings Today</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-icon">✅</span>
+            <span class="stat-trend trend-up">+3</span>
+          </div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">Tasks Due Today</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-icon">💰</span>
+            <span class="stat-trend trend-up">+18%</span>
+          </div>
+          <div class="stat-value">$2.4K</div>
+          <div class="stat-label">Revenue This Week</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-icon">🎯</span>
+            <span class="stat-trend trend-up">+1</span>
+          </div>
+          <div class="stat-value">7</div>
+          <div class="stat-label">Active Clients</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-icon">🔧</span>
+            <span class="stat-trend trend-down">-4</span>
+          </div>
+          <div class="stat-value">11</div>
+          <div class="stat-label">Active Tools</div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Left Column: AI Morning Brief -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🤖 AI Morning Brief</h3>
+            <a href="#" class="card-action">Regenerate</a>
+          </div>
+
+          <div class="brief-section">
+            <h4>🎯 Top 3 Priorities Today</h4>
+            <div class="brief-item">
+              <p><strong>1. Client Discovery Call (10 AM)</strong> - Golden Age Treasures needs AI Wingman system. Review their tool chaos audit before call. Potential $8K engagement.</p>
+            </div>
+            <div class="brief-item">
+              <p><strong>2. Finish Phase 5 Dashboard</strong> - Client demo scheduled Monday. Complete revenue integration and tool monitor. 3 hours blocked this afternoon.</p>
+            </div>
+            <div class="brief-item">
+              <p><strong>3. Follow Up: Wellness Studio Lead</strong> - No response to Tuesday's proposal. Send gentle nudge + case study. High conversion probability (87%).</p>
+            </div>
+          </div>
+
+          <div class="brief-section">
+            <h4>⚡ Key Decisions Needed</h4>
+            <div class="brief-item">
+              <p><strong>Pricing for Local Retail Client:</strong> They want "lite" version. Recommend $3K sprint vs. $5K full install. Review their tool stack (currently 28 tools).</p>
+            </div>
+            <div class="brief-item">
+              <p><strong>Automation Upgrade:</strong> Make.com approaching free tier limit (850/1000 ops). Upgrade to $9/mo or optimize workflows? Analysis shows 200 ops can be consolidated.</p>
+            </div>
+          </div>
+
+          <div class="brief-section">
+            <h4>🚀 Opportunities</h4>
+            <div class="brief-item">
+              <p><strong>Upsell Opportunity:</strong> Conscious Café (current client) asked about content automation. Their Instagram engagement up 40% since AI Wingman install. Propose $2K add-on.</p>
+            </div>
+            <div class="brief-item">
+              <p><strong>Referral Incoming:</strong> Sarah (wellness coach) mentioned you to her mastermind. Expect 2-3 warm leads next week. Prepare case study deck.</p>
+            </div>
+          </div>
+
+          <div class="brief-section">
+            <h4>⚠️ Risks & Blockers</h4>
+            <div class="brief-item">
+              <p><strong>Automation Failure:</strong> WooCommerce → Notion sync paused since yesterday. 15 orders not synced. Fix before client notices. Likely API rate limit issue.</p>
+            </div>
+            <div class="brief-item">
+              <p><strong>Calendar Conflict:</strong> Two meetings overlap at 2 PM. Reschedule client check-in or decline networking call? Client takes priority.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Priority Matrix -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">📊 Priority Matrix</h3>
+            <a href="#" class="card-action">View All Tasks</a>
+          </div>
+
+          <div class="priority-grid">
+            <div class="priority-quadrant urgent-important">
+              <div class="quadrant-header">🔥 Urgent & Important</div>
+              <div class="task-item">Client discovery prep (10 AM)</div>
+              <div class="task-item">Fix WooCommerce sync</div>
+              <div class="task-item">Resolve calendar conflict</div>
+            </div>
+
+            <div class="priority-quadrant not-urgent-important">
+              <div class="quadrant-header">🎯 Important, Not Urgent</div>
+              <div class="task-item">Finish Phase 5 dashboard</div>
+              <div class="task-item">Case study: Conscious Café</div>
+              <div class="task-item">Update AI Wingman pricing</div>
+            </div>
+
+            <div class="priority-quadrant urgent-not-important">
+              <div class="quadrant-header">⚡ Urgent, Not Important</div>
+              <div class="task-item">Respond to LinkedIn messages</div>
+              <div class="task-item">Schedule next week's calls</div>
+              <div class="task-item">Review Notion templates</div>
+            </div>
+
+            <div class="priority-quadrant not-urgent-not-important">
+              <div class="quadrant-header">📋 Neither Urgent Nor Important</div>
+              <div class="task-item">Explore new AI tools</div>
+              <div class="task-item">Organize Google Drive</div>
+              <div class="task-item">Update LinkedIn profile</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Grid -->
+      <div class="bottom-grid">
+        
+        <!-- Tool Chaos Monitor -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🔧 Tool Chaos Monitor</h3>
+            <a href="#" class="card-action">Optimize</a>
+          </div>
+          <div class="tool-list">
+            <div class="tool-item">
+              <span class="tool-name">Gmail</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Google Calendar</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Notion</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Slack</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Catalyst CRM</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Make.com</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Stripe Dashboard</span>
+              <div class="tool-status">
+                <span class="status-badge status-idle">Idle</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">WooCommerce</span>
+              <div class="tool-status">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Asana (Duplicate?)</span>
+              <div class="tool-status">
+                <span class="status-badge status-consolidate">Consolidate</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">Trello (Duplicate?)</span>
+              <div class="tool-status">
+                <span class="status-badge status-consolidate">Consolidate</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-name">ClickUp (Duplicate?)</span>
+              <div class="tool-status">
+                <span class="status-badge status-consolidate">Consolidate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Calendar -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">📅 Today's Calendar</h3>
+            <a href="#" class="card-action">View Week</a>
+          </div>
+          <div class="calendar-day">
+            <div class="meeting-block focus-block">
+              <div class="meeting-time">8:00 - 10:00</div>
+              <div class="meeting-details">
+                <div class="meeting-title">🧘 Deep Work Block</div>
+                <div class="meeting-attendees">Focus time • No meetings</div>
+              </div>
+            </div>
+            <div class="meeting-block">
+              <div class="meeting-time">10:00 - 11:00</div>
+              <div class="meeting-details">
+                <div class="meeting-title">Client Discovery: Golden Age Treasures</div>
+                <div class="meeting-attendees">Zoom • Sarah Chen</div>
+              </div>
+            </div>
+            <div class="meeting-block">
+              <div class="meeting-time">11:30 - 12:00</div>
+              <div class="meeting-details">
+                <div class="meeting-title">Check-in: Conscious Café</div>
+                <div class="meeting-attendees">Phone • Michael Rodriguez</div>
+              </div>
+            </div>
+            <div class="meeting-block focus-block">
+              <div class="meeting-time">1:00 - 4:00</div>
+              <div class="meeting-details">
+                <div class="meeting-title">🧘 Deep Work Block</div>
+                <div class="meeting-attendees">Phase 5 dashboard build</div>
+              </div>
+            </div>
+            <div class="meeting-block">
+              <div class="meeting-time">4:30 - 5:00</div>
+              <div class="meeting-details">
+                <div class="meeting-title">Weekly Review</div>
+                <div class="meeting-attendees">Personal • Planning</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Client Pipeline -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🎯 Client Pipeline</h3>
+            <a href="#" class="card-action">View CRM</a>
+          </div>
+          <div class="client-list">
+            <div class="client-item">
+              <div class="client-info">
+                <div class="client-name">Golden Age Treasures</div>
+                <div class="client-stage">Discovery • $8K potential</div>
+              </div>
+              <div class="client-health">
+                <div class="health-score health-high">92</div>
+              </div>
+            </div>
+            <div class="client-item">
+              <div class="client-info">
+                <div class="client-name">Conscious Café</div>
+                <div class="client-stage">Active • Month 2</div>
+              </div>
+              <div class="client-health">
+                <div class="health-score health-high">88</div>
+              </div>
+            </div>
+            <div class="client-item">
+              <div class="client-info">
+                <div class="client-name">Wellness Studio Ashland</div>
+                <div class="client-stage">Proposal Sent • $5K</div>
+              </div>
+              <div class="client-health">
+                <div class="health-score health-medium">67</div>
+              </div>
+            </div>
+            <div class="client-item">
+              <div class="client-info">
+                <div class="client-name">Local Retail Client</div>
+                <div class="client-stage">Negotiation • $3K</div>
+              </div>
+              <div class="client-health">
+                <div class="health-score health-medium">72</div>
+              </div>
+            </div>
+            <div class="client-item">
+              <div class="client-info">
+                <div class="client-name">Creative Agency PDX</div>
+                <div class="client-stage">Active • Month 4</div>
+              </div>
+              <div class="client-health">
+                <div class="health-score health-low">54</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Revenue & Automation Grid -->
+      <div class="bottom-grid" style="margin-top: 1.5rem;">
+        
+        <!-- Revenue Snapshot -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">💰 Revenue Snapshot</h3>
+            <a href="#" class="card-action">View Details</a>
+          </div>
+          <div class="revenue-grid">
+            <div class="revenue-metric">
+              <div class="revenue-value">$847</div>
+              <div class="revenue-label">Today</div>
+            </div>
+            <div class="revenue-metric">
+              <div class="revenue-value">$2.4K</div>
+              <div class="revenue-label">This Week</div>
+            </div>
+            <div class="revenue-metric">
+              <div class="revenue-value">$9.2K</div>
+              <div class="revenue-label">This Month</div>
+            </div>
+          </div>
+          <div class="revenue-chart">
+            <div class="chart-bar" style="height: 60%;"></div>
+            <div class="chart-bar" style="height: 45%;"></div>
+            <div class="chart-bar" style="height: 75%;"></div>
+            <div class="chart-bar" style="height: 55%;"></div>
+            <div class="chart-bar" style="height: 90%;"></div>
+            <div class="chart-bar" style="height: 70%;"></div>
+            <div class="chart-bar" style="height: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- Automation Status -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">⚙️ Automation Status</h3>
+            <a href="#" class="card-action">View All</a>
+          </div>
+          <div class="automation-list">
+            <div class="automation-item">
+              <span class="automation-name">Email → Notion Sync</span>
+              <div class="automation-status">
+                <span class="status-dot status-running"></span>
+                <span class="automation-runs">142 runs today</span>
+              </div>
+            </div>
+            <div class="automation-item">
+              <span class="automation-name">Client Onboarding Flow</span>
+              <div class="automation-status">
+                <span class="status-dot status-running"></span>
+                <span class="automation-runs">3 active</span>
+              </div>
+            </div>
+            <div class="automation-item">
+              <span class="automation-name">WooCommerce → Notion</span>
+              <div class="automation-status">
+                <span class="status-dot status-error"></span>
+                <span class="automation-runs">Paused 18h ago</span>
+              </div>
+            </div>
+            <div class="automation-item">
+              <span class="automation-name">Morning Brief Generator</span>
+              <div class="automation-status">
+                <span class="status-dot status-running"></span>
+                <span class="automation-runs">Ran at 6:00 AM</span>
+              </div>
+            </div>
+            <div class="automation-item">
+              <span class="automation-name">Calendar Focus Blocks</span>
+              <div class="automation-status">
+                <span class="status-dot status-running"></span>
+                <span class="automation-runs">2 blocks added</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">⚡ Quick Actions</h3>
+          </div>
+          <div class="quick-actions">
+            <button class="action-btn">Archive All Read</button>
+            <button class="action-btn">Block Focus Time</button>
+            <button class="action-btn">Generate Brief</button>
+            <button class="action-btn secondary">Check Automations</button>
+            <button class="action-btn secondary">Triage Inbox</button>
+            <button class="action-btn secondary">Weekly Review</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <script>
+      // IMPLEMENTATION NOTE: JavaScript for Interactivity
+      // This strawman uses static data. In Next.js version:
+      // 1. Replace with React components
+      // 2. Use React Query for data fetching
+      // 3. Implement real-time updates via WebSockets
+      // 4. Add authentication (NextAuth.js)
+      // 5. Connect to Supabase or PostgreSQL for data persistence
+      
+      // Example: Quick Action handlers
+      document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const action = this.textContent;
+          console.log(`Action triggered: ${action}`);
+          // In Next.js: trigger OpenClaw sub-agent via API route
+          // Example: POST /api/openclaw/email-agent { action: 'archive_read' }
+        });
+      });
+
+      // Example: Auto-refresh every 5 minutes
+      // setInterval(() => {
+      //   console.log('Refreshing dashboard data...');
+      //   // In Next.js: React Query will handle this automatically
+      // }, 300000);
+
+      // IMPLEMENTATION NOTE: OpenClaw Integration Points
+      // Each data section will connect to OpenClaw sub-agents:
+      
+      // 1. Email Agent (/api/openclaw/email)
+      //    - GET unread count, VIP messages, urgent items
+      //    - POST archive, snooze, delegate actions
+      
+      // 2. Calendar Agent (/api/openclaw/calendar)
+      //    - GET today's events, conflicts, focus blocks
+      //    - POST add focus time, reschedule, decline
+      
+      // 3. Task Agent (/api/openclaw/tasks)
+      //    - GET all tasks, priority matrix
+      //    - POST mark complete, delegate, snooze
+      
+      // 4. Revenue Agent (/api/openclaw/revenue)
+      //    - GET Stripe, PayPal, WooCommerce data
+      //    - Calculate trends, anomalies
+      
+      // 5. Client Agent (/api/openclaw/clients)
+      //    - GET Catalyst CRM pipeline, health scores
+      //    - POST update status, trigger outreach
+      
+      // 6. Tool Monitor Agent (/api/openclaw/tools)
+      //    - GET active tools, usage patterns
+      //    - POST suggest consolidation, auto-close tabs
+      
+      // 7. AI Brief Agent (/api/openclaw/brief)
+      //    - POST generate morning brief
+      //    - Uses OpenAI/Claude API to synthesize
+      
+      // 8. Automation Agent (/api/openclaw/automations)
+      //    - GET Make/Zapier workflow status
+      //    - POST restart, optimize, alert
+    </script>
+  </body>
+  </html>
+````
+
+---
+
+# 🎯 What You Just Got
+
+## **Working Dashboard Features:**
+
+✅ **Calm Score** - Visual health metric (will calculate from 5 categories)  
+✅ **Quick Stats** - 6 key metrics with trend indicators  
+✅ **AI Morning Brief** - Priorities, decisions, opportunities, risks  
+✅ **Priority Matrix** - Eisenhower quadrants auto-populated  
+✅ **Tool Chaos Monitor** - Track active tools, suggest consolidation  
+✅ **Today's Calendar** - Meetings + focus blocks  
+✅ **Client Pipeline** - Health scores, stages, values  
+✅ **Revenue Snapshot** - Today/week/month + mini chart  
+✅ **Automation Status** - Monitor Make/Zapier workflows  
+✅ **Quick Actions** - One-click automations  
+
+---
+
+## **OpenClaw Sub-Agents (Documented in Code):**
+
+Each section has implementation notes explaining how OpenClaw will:
+
+1. **Email Agent** - Gmail API → unread count, VIP triage, urgent flags
+2. **Calendar Agent** - Google Calendar API → events, conflicts, focus blocks
+3. **Task Agent** - Notion/Asana/ClickUp APIs → priority matrix auto-population
+4. **Revenue Agent** - Stripe/PayPal/WooCommerce APIs → revenue tracking
+5. **Client Agent** - Catalyst CRM API → pipeline, health scores
+6. **Tool Monitor Agent** - Browser/system APIs → active tool tracking
+7. **AI Brief Agent** - OpenAI/Claude API → morning synthesis
+8. **Automation Agent** - Make/Zapier APIs → workflow monitoring
+
+---
+
+## **What This Dashboard Does TODAY:**
+
+- **Shows clients** what their calm control center will look like
+- **Demonstrates value** immediately (tool consolidation, priority clarity)
+- **Proves concept** without requiring API setup
+- **Sets expectations** for what OpenClaw will automate
+
+---
+
+## **Next Steps for Claude Code:**
+
+### **Phase 1: Convert to Next.js (Week 1)**
+
+```bash
+# Create Next.js app
+npx create-next-app@latest ai-wingman-dashboard --typescript --tailwind --app
+
+# Install dependencies
+npm install @tanstack/react-query axios recharts date-fns
+npm install @supabase/supabase-js # if using Supabase
+npm install next-auth # for authentication
+```
+
+### **Phase 2: Build API Routes (Week 2)**
+
+Create `/app/api/openclaw/` routes for each sub-agent:
+- `/email` - Gmail API integration
+- `/calendar` - Google Calendar API
+- `/tasks` - Notion/Asana/ClickUp APIs
+- `/revenue` - Stripe/PayPal/WooCommerce
+- `/clients` - Catalyst CRM
+- `/tools` - Browser extension data
+- `/brief` - AI synthesis (OpenAI/Claude)
+- `/automations` - Make/Zapier monitoring
+
+### **Phase 3: Deploy to Vercel (Week 3)**
+
+```bash
+# Connect to GitHub
+git init
+git add .
+git commit -m "Initial AI Wingman dashboard"
+git remote add origin <your-repo>
+git push -u origin main
+
+# Vercel will auto-deploy on push
+# Add environment variables in Vercel dashboard:
+# - OPENAI_API_KEY
+# - GMAIL_CLIENT_ID
+# - GOOGLE_CALENDAR_API_KEY
+# - STRIPE_API_KEY
+# - etc.
+```
+
+---
+
+## **Cost to Build This:**
+
+**Using Your Existing Tools:**
+- Next.js: Free
+- Vercel hosting: Free tier
+- All APIs: Free (Gmail, Calendar, Notion, Stripe, etc.)
+- OpenAI API: ~$5-20/month (for AI Brief generation)
+- **Total: $5-20/month**
+
+**No new subscriptions needed!**
+
+---
+
+## **Show This to Clients TODAY:**
+
+1. **Open the HTML file** in browser
+2. **Walk through each section:**
+   - "This is your morning brief—AI generates it at 6 AM"
+   - "This is your priority matrix—auto-populated from all your tools"
+   - "This monitors your tool chaos—see how we reduce 32 tools to 11"
+   - "This tracks revenue in real-time from Stripe, PayPal, WooCommerce"
+3. **Explain:** "This is a working prototype. When we install OpenClaw, all this data becomes live."
+
+---
+
+## **Want Me to:**
+
+1. **Build the Next.js version structure** (file organization, component breakdown)?
+2. **Write the OpenClaw API integration code** (Gmail, Calendar, Notion connectors)?
+3. **Create the Supabase database schema** (for storing dashboard data)?
+4. **Build the Make.com automation blueprints** (to feed data into dashboard)?
+5. **Design the client onboarding flow** (how they connect their tools)?
+
+**Pick one and I'll build it next!** Or I can create a **complete implementation roadmap** showing all steps from strawman → production.

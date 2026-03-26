@@ -1,0 +1,86 @@
+look at the below and attached in light of all we've worked on and create an improved skill.md that incorporates 
+
+Six fields. That's it.
+01 — NAME
+What does this skill do?
+e.g. "Daily Inventory Check"
+02 — TRIGGER
+When should it run?
+e.g. "Every morning at 7 AM"
+03 — CONTEXT
+What does it need to know?
+Business rules, data sources, preferences
+04 — STEPS
+What does it do, step by step?
+Written as if training a new employee
+05 — TOOLS
+What systems does it need?
+email, spreadsheet, POS, calendar
+06 — GUARDRAILS
+When should it stop and ask a human?
+Dollar thresholds, angry customers, novel situations
+
+prompt that built the attached skill.md
+
+Need a skill.md that incorporates the following based on what we've discussed the files youve read and what i want to do as  
+ai wingman building automated dashboards to automate small business tasks, repitition and things that would fit into the       
+categories below that where and agent can support building out the best dashboard, each part of the dashboard we built, and    
+assist me with the companies and assist those CEOs so they are free to do what they want to create Six fields. That's it.      
+01 — NAME                                                                                                                      
+What does this skill do?                                                                                                       
+e.g. "Daily Inventory Check"                                                                                                   
+02 — TRIGGER                                                                                                                   
+When should it run?                                                                                                            
+e.g. "Every morning at 7 AM"                                                                                                   
+03 — CONTEXT                                                                                                                   
+What does it need to know?                                                                                                     
+Business rules, data sources, preferences                                                                                      
+04 — STEPS                                                                                                                     
+What does it do, step by step?                                                                                                 
+Written as if training a new employee                                                                                          
+05 — TOOLS                                                                                                                     
+What systems does it need?                                                                                                     
+email, spreadsheet, POS, calendar                                                                                              
+06 — GUARDRAILS                                                                                                                
+When should it stop and ask a human?                                                                                           
+Dollar thresholds, angry customers, novel situations... the "below that": Better ops don’t just keep the lights on. Tier open  
+doors you didn’t know were there                                                                                               
+                                                                                                                               
+When you run oops will you see things you didn’t see won’t you saw before                                                      
+                                                                                                                               
+Biggest companies built tools giving them an unfair advantage and now ai levels the playing field                              
+                                                                                                                               
+Ai as a teammate                                                                                                               
+                                                                                                                               
+                                                                                                                               
+Spaciousness                                                                                                                   
+- manage my 80 20 for ADD across treasures, wingmman, shadow operator and personal                                             
+                                                                                                                               
+Repatitive                                                                                                                     
+- yelling at AI for not doing what i need… lots of work little to show                                                         
+- .                                                                                                                            
+                                                                                                                               
+Time Lost                                                                                                                      
+- see above                                                                                                                    
+- still in treasures                                                                                                           
+- want to be monetizing                                                                                                        
+    - Shadow                                                                                                                   
+    - CEO CALM                                                                                                                 
+    - Real Estate                                                                                                              
+                                                                                                                               
+Info Needs                                                                                                                     
+- AI solutons and skills for the above… best practices, earlier adopter type                                                   
+- what with Woocomerce/Shopify skills so i dont recreate teh wheel                                                             
+- finishing my training across 2 courses                                                                                       
+                                                                                                                               
+Automate                                                                                                                       
+- fixing the above                                                                                                             
+- automating the processes for                                                                                                 
+    - shadow operating                                                                                                         
+    - CEO CALM                                                                                                                 
+        - agent builds                                                                                                         
+        - automation builds                                                                                                    
+- Treasures                                                                                                                    
+- Openclaw                                                                                                                     
+- Dashboard Pulls                                                                                                              
+- Tool set up from API to direct login 1~ffd... use ai wingman docs describing what i want to do       

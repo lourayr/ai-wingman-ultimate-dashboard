@@ -444,7 +444,7 @@ export default function GPTLauncher() {
                         className="flex items-center justify-between w-full text-xs text-slate-500 hover:text-slate-300 transition-colors pt-1 border-t border-slate-800"
                       >
                         <span>
-                          Prep questions
+                          Complete These Prep Questions Before Clicking GPT:
                           {filledCount > 0 && (
                             <span className="ml-1.5 bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded text-xs">
                               {filledCount}/{tool.followUps.length}

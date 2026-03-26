@@ -205,11 +205,26 @@ export async function POST(request: NextRequest) {
       rawContent = d.content?.[0]?.text ?? "[]";
     }
 
-    const match = rawContent.match(/\[[\s\S]*\]/);
-    if (!match) {
+    // Robust JSON array extraction — handles <think> tags, code fences, and noisy preamble
+    let cleaned = rawContent
+      .replace(/<think>[\s\S]*?<\/think>/gi, "") // strip DeepSeek think blocks
+      .replace(/```(?:json)?\s*/gi, "")           // strip code fences
+      .trim();
+
+    let insights: unknown[] | null = null;
+    // Try direct parse
+    try { insights = JSON.parse(cleaned); } catch { /* fall through */ }
+    // Find the first [ ... last ] slice
+    if (!insights) {
+      const start = cleaned.indexOf("[");
+      const end = cleaned.lastIndexOf("]");
+      if (start !== -1 && end > start) {
+        try { insights = JSON.parse(cleaned.slice(start, end + 1)); } catch { /* fall through */ }
+      }
+    }
+    if (!insights) {
       return NextResponse.json({ ok: false, error: "Non-JSON AI response", raw: rawContent.slice(0, 300) });
     }
-    const insights = JSON.parse(match[0]);
     return NextResponse.json({ ok: true, insights, model: selectedModel, toolsUsed: {
       gmail: !!(body.gmail?.connected),
       calendar: !!(body.calendar?.connected),

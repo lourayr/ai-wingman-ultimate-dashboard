@@ -200,12 +200,19 @@ function SelectField({
 }
 
 // ─── Main component ─────────────────────────────────────────────────────────────
-export default function OnboardingWizard() {
+export default function OnboardingWizard({ forceNew = false }: { forceNew?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(EMPTY);
   const [sessionId] = useState(() => {
     if (typeof window === "undefined") return crypto.randomUUID();
+    if (forceNew) {
+      // Clear old session + draft, start fresh
+      localStorage.removeItem("wingman-form-draft");
+      const id = crypto.randomUUID();
+      localStorage.setItem("wingman-onboarding-session", id);
+      return id;
+    }
     const stored = localStorage.getItem("wingman-onboarding-session");
     if (stored) return stored;
     const id = crypto.randomUUID();
@@ -215,13 +222,14 @@ export default function OnboardingWizard() {
   const [saving, setSaving] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
 
-  // Restore in-progress form from localStorage
+  // Restore in-progress form from localStorage (skip if forceNew — already cleared above)
   useEffect(() => {
+    if (forceNew) return;
     const saved = localStorage.getItem("wingman-form-draft");
     if (saved) {
       try { setForm(JSON.parse(saved)); } catch { /* ignore */ }
     }
-  }, []);
+  }, [forceNew]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const updated = { ...form, [e.target.name]: e.target.value };

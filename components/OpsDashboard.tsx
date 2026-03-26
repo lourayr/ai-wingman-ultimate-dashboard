@@ -54,7 +54,7 @@ export default async function OpsDashboard() {
           </div>
           <div className="flex gap-2">
             <Link
-              href="/onboarding"
+              href="/onboarding?new=1"
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
             >
               <Users className="w-4 h-4" />
@@ -193,7 +193,7 @@ export default async function OpsDashboard() {
           {clients.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No submissions yet.{" "}
-              <Link href="/onboarding" className="text-purple-400 hover:underline">
+              <Link href="/onboarding?new=1" className="text-purple-400 hover:underline">
                 Start onboarding a client
               </Link>
             </div>
