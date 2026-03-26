@@ -37,19 +37,19 @@ export async function POST(request: NextRequest) {
       sessionId,
       status = "draft",
       currentStep = 0,
-      // Step 1
+      // Core fields (v1 + v2)
       email, businessName, website, industryModel, teamStructure, revenueTrajectory,
-      // Step 2
       primaryGoal, biggestChallenge, techStack, strengthsGaps,
-      // Step 3
       investmentCapacity, successMetrics, existingAssets, untappedOpportunity,
-      // Step 4
       scalingBottleneck, timeline, aiComfort, dreamScenario,
-      // Step 5
       uvp, idealClient, unconventionalApproach, anythingElse,
-      // Step 6 DNA
       brandBio, brandVoice, bannedWords, persuasivePremise,
       testimonials, contentKeywords, offerKeywords,
+      // v2 new fields
+      contactName, businessDescription, coreOffer, dailyDrains,
+      instagramUrl, instagramDesc, bestContent,
+      salesProcess, leadMagnet, offerTiers, competitors,
+      hiddenFear, contentConstraints,
     } = body;
 
     if (!sessionId) {
@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
         scaling_bottleneck, timeline, ai_comfort, dream_scenario,
         uvp, ideal_client, unconventional_approach, anything_else,
         brand_bio, brand_voice, banned_words, persuasive_premise,
-        testimonials, content_keywords, offer_keywords
+        testimonials, content_keywords, offer_keywords,
+        contact_name, business_description, core_offer, daily_drains,
+        instagram_url, instagram_desc, best_content, sales_process,
+        lead_magnet, offer_tiers, competitors, hidden_fear, content_constraints
       ) VALUES (
         ${sessionId}, ${status}, ${currentStep},
         ${email ?? null}, ${businessName ?? null}, ${website ?? null},
@@ -81,7 +84,12 @@ export async function POST(request: NextRequest) {
         ${unconventionalApproach ?? null}, ${anythingElse ?? null},
         ${brandBio ?? null}, ${brandVoice ?? null}, ${bannedWords ?? null},
         ${persuasivePremise ?? null}, ${testimonials ?? null},
-        ${contentKeywords ?? null}, ${offerKeywords ?? null}
+        ${contentKeywords ?? null}, ${offerKeywords ?? null},
+        ${contactName ?? null}, ${businessDescription ?? null}, ${coreOffer ?? null},
+        ${dailyDrains ?? null}, ${instagramUrl ?? null}, ${instagramDesc ?? null},
+        ${bestContent ?? null}, ${salesProcess ?? null}, ${leadMagnet ?? null},
+        ${offerTiers ?? null}, ${competitors ?? null}, ${hiddenFear ?? null},
+        ${contentConstraints ?? null}
       )
       ON CONFLICT (session_id) DO UPDATE SET
         status = EXCLUDED.status,
@@ -115,7 +123,20 @@ export async function POST(request: NextRequest) {
         persuasive_premise = COALESCE(EXCLUDED.persuasive_premise, onboarding_submissions.persuasive_premise),
         testimonials = COALESCE(EXCLUDED.testimonials, onboarding_submissions.testimonials),
         content_keywords = COALESCE(EXCLUDED.content_keywords, onboarding_submissions.content_keywords),
-        offer_keywords = COALESCE(EXCLUDED.offer_keywords, onboarding_submissions.offer_keywords)
+        offer_keywords = COALESCE(EXCLUDED.offer_keywords, onboarding_submissions.offer_keywords),
+        contact_name = COALESCE(EXCLUDED.contact_name, onboarding_submissions.contact_name),
+        business_description = COALESCE(EXCLUDED.business_description, onboarding_submissions.business_description),
+        core_offer = COALESCE(EXCLUDED.core_offer, onboarding_submissions.core_offer),
+        daily_drains = COALESCE(EXCLUDED.daily_drains, onboarding_submissions.daily_drains),
+        instagram_url = COALESCE(EXCLUDED.instagram_url, onboarding_submissions.instagram_url),
+        instagram_desc = COALESCE(EXCLUDED.instagram_desc, onboarding_submissions.instagram_desc),
+        best_content = COALESCE(EXCLUDED.best_content, onboarding_submissions.best_content),
+        sales_process = COALESCE(EXCLUDED.sales_process, onboarding_submissions.sales_process),
+        lead_magnet = COALESCE(EXCLUDED.lead_magnet, onboarding_submissions.lead_magnet),
+        offer_tiers = COALESCE(EXCLUDED.offer_tiers, onboarding_submissions.offer_tiers),
+        competitors = COALESCE(EXCLUDED.competitors, onboarding_submissions.competitors),
+        hidden_fear = COALESCE(EXCLUDED.hidden_fear, onboarding_submissions.hidden_fear),
+        content_constraints = COALESCE(EXCLUDED.content_constraints, onboarding_submissions.content_constraints)
     `;
 
     return NextResponse.json({ ok: true });

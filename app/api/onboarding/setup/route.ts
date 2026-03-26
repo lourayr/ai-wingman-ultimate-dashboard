@@ -44,16 +44,35 @@ export async function GET() {
       )
     `;
 
-    // Idempotent DNA column migrations (no-op if columns already exist)
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS brand_bio TEXT`; } catch { /* exists */ }
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS brand_voice TEXT`; } catch { /* exists */ }
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS banned_words TEXT`; } catch { /* exists */ }
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS persuasive_premise TEXT`; } catch { /* exists */ }
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS testimonials TEXT`; } catch { /* exists */ }
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS content_keywords TEXT`; } catch { /* exists */ }
-    try { await sql`ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS offer_keywords TEXT`; } catch { /* exists */ }
+    // Idempotent migrations — safe to run multiple times
+    const migrations = [
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS brand_bio TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS brand_voice TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS banned_words TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS persuasive_premise TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS testimonials TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS content_keywords TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS offer_keywords TEXT`,
+      // v2 intake form fields
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS contact_name TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS business_description TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS core_offer TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS daily_drains TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS instagram_url TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS instagram_desc TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS best_content TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS sales_process TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS lead_magnet TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS offer_tiers TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS competitors TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS hidden_fear TEXT`,
+      `ALTER TABLE onboarding_submissions ADD COLUMN IF NOT EXISTS content_constraints TEXT`,
+    ];
+    for (const m of migrations) {
+      try { await sql.unsafe(m); } catch { /* column already exists */ }
+    }
 
-    return NextResponse.json({ ok: true, message: "Table ready" });
+    return NextResponse.json({ ok: true, message: "Table ready — all columns applied" });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: String(error) },

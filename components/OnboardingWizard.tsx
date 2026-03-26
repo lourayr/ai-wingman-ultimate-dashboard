@@ -2,383 +2,700 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ChevronLeft, CheckCircle } from "lucide-react";
+import { ChevronRight, ChevronLeft, CheckCircle, ChevronDown } from "lucide-react";
 import Navigation from "./Navigation";
 
+// ─── Form shape ───────────────────────────────────────────────────────────────
 interface FormData {
-  // Step 1
+  // Section 1 — Business Foundation (Q1–Q4)
   email: string;
   businessName: string;
   website: string;
+  instagramUrl: string;
+  contactName: string;
+  businessDescription: string;
   industryModel: string;
-  teamStructure: string;
   revenueTrajectory: string;
-  // Step 2
+  teamStructure: string;
   primaryGoal: string;
+  // Section 2 — Audience & Offer (Q5–Q9)
   biggestChallenge: string;
-  techStack: string;
-  strengthsGaps: string;
-  // Step 3
-  investmentCapacity: string;
-  successMetrics: string;
-  existingAssets: string;
-  untappedOpportunity: string;
-  // Step 4
-  scalingBottleneck: string;
-  timeline: string;
-  aiComfort: string;
-  dreamScenario: string;
-  // Step 5
-  uvp: string;
   idealClient: string;
-  unconventionalApproach: string;
-  anythingElse: string;
-  // Step 6 DNA
-  brandBio: string;
+  coreOffer: string;
+  uniqueApproach: string;
+  dailyDrains: string;
+  // Section 3 — Operations (Q10–Q13)
+  techStack: string;
+  investmentCapacity: string;
+  aiComfort: string;
+  successMetrics: string;
+  // Section 4 — Vision & Voice (Q14–Q18)
+  dreamScenario: string;
   brandVoice: string;
   bannedWords: string;
   persuasivePremise: string;
   testimonials: string;
+  // Section 5 — Growth (Q19–Q20)
+  untappedOpportunity: string;
+  anythingElse: string;
+  // Optional deep-dive (O1–O10)
+  bestContent: string;
   contentKeywords: string;
   offerKeywords: string;
+  instagramDesc: string;
+  salesProcess: string;
+  leadMagnet: string;
+  offerTiers: string;
+  competitors: string;
+  hiddenFear: string;
+  contentConstraints: string;
+  scalingBottleneck: string;
 }
 
-const DEFAULT_FORM: FormData = {
-  email: "", businessName: "", website: "", industryModel: "", teamStructure: "", revenueTrajectory: "",
-  primaryGoal: "", biggestChallenge: "", techStack: "", strengthsGaps: "",
-  investmentCapacity: "", successMetrics: "", existingAssets: "", untappedOpportunity: "",
-  scalingBottleneck: "", timeline: "", aiComfort: "", dreamScenario: "",
-  uvp: "", idealClient: "", unconventionalApproach: "", anythingElse: "",
-  brandBio: "", brandVoice: "", bannedWords: "", persuasivePremise: "",
-  testimonials: "", contentKeywords: "", offerKeywords: "",
+const EMPTY: FormData = {
+  email: "", businessName: "", website: "", instagramUrl: "", contactName: "",
+  businessDescription: "", industryModel: "", revenueTrajectory: "", teamStructure: "",
+  primaryGoal: "", biggestChallenge: "", idealClient: "", coreOffer: "",
+  uniqueApproach: "", dailyDrains: "", techStack: "", investmentCapacity: "",
+  aiComfort: "", successMetrics: "", dreamScenario: "", brandVoice: "",
+  bannedWords: "", persuasivePremise: "", testimonials: "",
+  untappedOpportunity: "", anythingElse: "",
+  bestContent: "", contentKeywords: "", offerKeywords: "", instagramDesc: "",
+  salesProcess: "", leadMagnet: "", offerTiers: "", competitors: "",
+  hiddenFear: "", contentConstraints: "", scalingBottleneck: "",
 };
 
-const AI_COMFORT_OPTIONS = [
-  "Early adopter — I already use AI daily",
-  "Curious but cautious — I want to learn",
-  "Skeptical — show me it works first",
-  "Beginner — starting from scratch",
-];
-
-const TIMELINE_OPTIONS = ["30 days", "60 days", "90 days", "6 months", "12 months+"];
-
+// ─── Step metadata ─────────────────────────────────────────────────────────────
 const STEPS = [
-  { label: "Business Overview", description: "Tell us about your business" },
-  { label: "Goals & Challenges", description: "What are you trying to achieve?" },
-  { label: "Resources & Assets", description: "What do you have to work with?" },
-  { label: "Growth & Scaling", description: "How do you want to grow?" },
-  { label: "Identity", description: "What makes you unique?" },
-  { label: "Campaign DNA", description: "Power your AI content (optional)" },
+  { label: "Business Foundation", num: 1, total: 5 },
+  { label: "Your Audience & Offer", num: 2, total: 5 },
+  { label: "Operations & Resources", num: 3, total: 5 },
+  { label: "Vision & Voice", num: 4, total: 5 },
+  { label: "Growth Intelligence", num: 5, total: 5 },
+  { label: "Complete — Optional Deep-Dive", num: 6, total: 6 },
+  { label: "Deep-Dive Part 2", num: 7, total: 7 },
 ];
 
+// ─── Reusable field components ─────────────────────────────────────────────────
 function Field({
-  label,
-  name,
-  value,
-  onChange,
-  placeholder,
-  multiline = false,
-  required = false,
+  q, label, name, value, onChange, placeholder, multiline = false, required = false,
 }: {
-  label: string;
-  name: keyof FormData;
-  value: string;
-  onChange: (name: keyof FormData, value: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  required?: boolean;
+  q?: string; label: string; name: string; value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  placeholder?: string; multiline?: boolean; required?: boolean;
 }) {
-  const base =
-    "w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm";
   return (
     <div className="space-y-1.5">
-      <label className="text-slate-300 text-sm font-medium">
-        {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+      {q && <span className="text-xs text-slate-600 uppercase tracking-widest">{q}</span>}
+      <label className="block text-slate-200 text-sm font-medium leading-snug">
+        {label}{required && <span className="text-red-400 ml-1">*</span>}
       </label>
       {multiline ? (
         <textarea
           name={name}
           value={value}
-          onChange={(e) => onChange(name, e.target.value)}
+          onChange={onChange}
           placeholder={placeholder}
           rows={3}
-          className={base}
+          className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/60 resize-none"
         />
       ) : (
         <input
           type="text"
           name={name}
           value={value}
-          onChange={(e) => onChange(name, e.target.value)}
+          onChange={onChange}
           placeholder={placeholder}
-          className={base}
+          className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/60"
         />
       )}
     </div>
   );
 }
 
+function RadioGroup({
+  q, label, name, value, onChange, options,
+}: {
+  q?: string; label: string; name: string; value: string;
+  onChange: (val: string) => void; options: string[];
+}) {
+  return (
+    <div className="space-y-2">
+      {q && <span className="text-xs text-slate-600 uppercase tracking-widest">{q}</span>}
+      <label className="block text-slate-200 text-sm font-medium leading-snug">{label}</label>
+      <div className="flex flex-col gap-1.5">
+        {options.map((opt) => (
+          <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+            <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${value === opt ? "border-purple-500 bg-purple-500/20" : "border-slate-600 group-hover:border-slate-400"}`}>
+              {value === opt && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
+            </div>
+            <span className="text-slate-300 text-sm" onClick={() => onChange(opt)}>{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SelectField({
+  q, label, name, value, onChange, options,
+}: {
+  q?: string; label: string; name: string; value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: string[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      {q && <span className="text-xs text-slate-600 uppercase tracking-widest">{q}</span>}
+      <label className="block text-slate-200 text-sm font-medium">{label}</label>
+      <div className="relative">
+        <select
+          name={name}
+          value={value}
+          onChange={onChange}
+          className="w-full appearance-none bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-purple-500/60 cursor-pointer pr-8"
+        >
+          <option value="">Select one...</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ─────────────────────────────────────────────────────────────
 export default function OnboardingWizard() {
   const router = useRouter();
-  const [step, setStep] = useState(0);
-  const [sessionId, setSessionId] = useState<string>("");
-  const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState<FormData>(EMPTY);
+  const [sessionId] = useState(() => {
+    if (typeof window === "undefined") return crypto.randomUUID();
+    const stored = localStorage.getItem("wingman-onboarding-session");
+    if (stored) return stored;
+    const id = crypto.randomUUID();
+    localStorage.setItem("wingman-onboarding-session", id);
+    return id;
+  });
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
 
+  // Restore in-progress form from localStorage
   useEffect(() => {
-    const existing = localStorage.getItem("wingman-onboarding-session");
-    if (existing) {
-      setSessionId(existing);
-      // Try to load existing data
-      fetch(`/api/onboarding?session=${existing}`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.ok && d.submission) {
-            const s = d.submission;
-            setFormData({
-              email: s.email ?? "",
-              businessName: s.business_name ?? "",
-              website: s.website ?? "",
-              industryModel: s.industry_model ?? "",
-              teamStructure: s.team_structure ?? "",
-              revenueTrajectory: s.revenue_trajectory ?? "",
-              primaryGoal: s.primary_goal ?? "",
-              biggestChallenge: s.biggest_challenge ?? "",
-              techStack: s.tech_stack ?? "",
-              strengthsGaps: s.strengths_gaps ?? "",
-              investmentCapacity: s.investment_capacity ?? "",
-              successMetrics: s.success_metrics ?? "",
-              existingAssets: s.existing_assets ?? "",
-              untappedOpportunity: s.untapped_opportunity ?? "",
-              scalingBottleneck: s.scaling_bottleneck ?? "",
-              timeline: s.timeline ?? "",
-              aiComfort: s.ai_comfort ?? "",
-              dreamScenario: s.dream_scenario ?? "",
-              uvp: s.uvp ?? "",
-              idealClient: s.ideal_client ?? "",
-              unconventionalApproach: s.unconventional_approach ?? "",
-              anythingElse: s.anything_else ?? "",
-              brandBio: s.brand_bio ?? "",
-              brandVoice: s.brand_voice ?? "",
-              bannedWords: s.banned_words ?? "",
-              persuasivePremise: s.persuasive_premise ?? "",
-              testimonials: s.testimonials ?? "",
-              contentKeywords: s.content_keywords ?? "",
-              offerKeywords: s.offer_keywords ?? "",
-            });
-            setStep(s.current_step ?? 0);
-          }
-        })
-        .catch(() => {});
-    } else {
-      const newId = crypto.randomUUID();
-      localStorage.setItem("wingman-onboarding-session", newId);
-      setSessionId(newId);
+    const saved = localStorage.getItem("wingman-form-draft");
+    if (saved) {
+      try { setForm(JSON.parse(saved)); } catch { /* ignore */ }
     }
   }, []);
 
-  const handleChange = (name: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const updated = { ...form, [e.target.name]: e.target.value };
+    setForm(updated);
+    localStorage.setItem("wingman-form-draft", JSON.stringify(updated));
   };
 
-  const saveToDb = async (status: "draft" | "complete") => {
-    if (!sessionId) return;
+  const handleRadio = (name: keyof FormData, val: string) => {
+    const updated = { ...form, [name]: val };
+    setForm(updated);
+    localStorage.setItem("wingman-form-draft", JSON.stringify(updated));
+  };
+
+  const save = async (finalStatus?: string) => {
     setSaving(true);
     try {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, status, currentStep: step, ...formData }),
+        body: JSON.stringify({
+          sessionId,
+          status: finalStatus ?? "draft",
+          currentStep: step,
+          email: form.email, businessName: form.businessName, website: form.website,
+          industryModel: form.industryModel, teamStructure: form.teamStructure,
+          revenueTrajectory: form.revenueTrajectory, primaryGoal: form.primaryGoal,
+          biggestChallenge: form.biggestChallenge, techStack: form.techStack,
+          investmentCapacity: form.investmentCapacity, successMetrics: form.successMetrics,
+          untappedOpportunity: form.untappedOpportunity, aiComfort: form.aiComfort,
+          dreamScenario: form.dreamScenario, uvp: form.uniqueApproach,
+          idealClient: form.idealClient, unconventionalApproach: form.uniqueApproach,
+          anythingElse: form.anythingElse,
+          brandVoice: form.brandVoice, bannedWords: form.bannedWords,
+          persuasivePremise: form.persuasivePremise, testimonials: form.testimonials,
+          contentKeywords: form.contentKeywords, offerKeywords: form.offerKeywords,
+          brandBio: form.businessDescription,
+          scalingBottleneck: form.scalingBottleneck,
+          // v2
+          contactName: form.contactName, businessDescription: form.businessDescription,
+          coreOffer: form.coreOffer, dailyDrains: form.dailyDrains,
+          instagramUrl: form.instagramUrl, instagramDesc: form.instagramDesc,
+          bestContent: form.bestContent, salesProcess: form.salesProcess,
+          leadMagnet: form.leadMagnet, offerTiers: form.offerTiers,
+          competitors: form.competitors, hiddenFear: form.hiddenFear,
+          contentConstraints: form.contentConstraints,
+        }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // ignore
-    } finally {
-      setSaving(false);
-    }
+    } catch { /* ignore */ }
+    setSaving(false);
   };
 
-  const handleNext = async () => {
-    await saveToDb("draft");
-    if (step < STEPS.length - 1) {
-      setStep(step + 1);
-    } else {
-      await saveToDb("complete");
-      router.push(`/onboarding/summary?session=${sessionId}`);
-    }
+  const next = async () => {
+    await save();
+    setStep((s) => s + 1);
+    window.scrollTo(0, 0);
   };
 
-  const handleBack = () => {
-    if (step > 0) setStep(step - 1);
+  const back = () => {
+    setStep((s) => Math.max(1, s - 1));
+    window.scrollTo(0, 0);
   };
+
+  const finish = async () => {
+    await save("complete");
+    localStorage.removeItem("wingman-form-draft");
+    router.push(`/onboarding/summary?session=${sessionId}`);
+  };
+
+  const finishWithOptional = async () => {
+    await save("complete");
+    localStorage.removeItem("wingman-form-draft");
+    router.push(`/onboarding/summary?session=${sessionId}`);
+  };
+
+  const totalSteps = showOptional ? 7 : 6;
+  const progress = ((step - 1) / (totalSteps - 1)) * 100;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <Navigation />
-      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-8 space-y-6">
+      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
+
         {/* Header */}
-        <div>
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">
-            Client Onboarding
+            AI Wingman Client Intake
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">
-            {STEPS[step].description} — Step {step + 1} of {STEPS.length}
+          <p className="text-slate-400 text-sm mt-1">
+            This takes about 10–15 minutes. Your answers power everything we build together.
           </p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-500">
-            {STEPS.map((s, i) => (
-              <span
-                key={s.label}
-                className={i === step ? "text-purple-400 font-medium" : i < step ? "text-green-400" : ""}
-              >
-                {i < step ? "✓" : i + 1}
-              </span>
-            ))}
+        {/* Progress */}
+        {step < 6 && (
+          <div className="mb-6 space-y-2">
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>Section {step} of 5</span>
+              <span>{STEPS[step - 1]?.label}</span>
+            </div>
+            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all duration-500"
+                style={{ width: `${(step / 5) * 100}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-purple-600 to-cyan-600 transition-all duration-500"
-              style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-            />
-          </div>
-        </div>
+        )}
 
-        {/* Form Steps */}
-        <div className="glass rounded-xl p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-white">{STEPS[step].label}</h2>
+        <div className="glass rounded-2xl p-6 space-y-6">
 
-          {step === 0 && (
-            <>
-              <Field label="Email" name="email" value={formData.email} onChange={handleChange} placeholder="your@email.com" required />
-              <Field label="Business Name" name="businessName" value={formData.businessName} onChange={handleChange} placeholder="Your Business Name" required />
-              <Field label="Website" name="website" value={formData.website} onChange={handleChange} placeholder="https://yourbusiness.com" />
-              <Field label="Industry & Business Model" name="industryModel" value={formData.industryModel} onChange={handleChange} placeholder="e.g. B2B SaaS / E-commerce / Consulting" multiline />
-              <Field label="Team Structure" name="teamStructure" value={formData.teamStructure} onChange={handleChange} placeholder="e.g. Solo founder, 5 FTE + contractors" />
-              <Field label="Revenue & Growth Trajectory" name="revenueTrajectory" value={formData.revenueTrajectory} onChange={handleChange} placeholder="e.g. $500K ARR, growing 40% YoY" />
-            </>
-          )}
-
+          {/* ── STEP 1: Business Foundation ─────────────────────────── */}
           {step === 1 && (
-            <>
-              <Field label="Primary Goal (Next 90 Days)" name="primaryGoal" value={formData.primaryGoal} onChange={handleChange} placeholder="What's your most important outcome?" multiline required />
-              <Field label="Biggest Challenge" name="biggestChallenge" value={formData.biggestChallenge} onChange={handleChange} placeholder="What's holding you back the most?" multiline required />
-              <Field label="Current Tech Stack" name="techStack" value={formData.techStack} onChange={handleChange} placeholder="e.g. Shopify, HubSpot, Slack, Notion" multiline />
-              <Field label="Team Strengths & Gaps" name="strengthsGaps" value={formData.strengthsGaps} onChange={handleChange} placeholder="Where does your team excel? Where do you need help?" multiline />
-            </>
+            <div className="space-y-5">
+              <Field
+                q="Q1" label="Business name, website, and your name/title"
+                name="businessName" value={form.businessName} onChange={handleChange}
+                placeholder="e.g. Golden Age Treasures | goldenage.shop"
+                required
+              />
+              <Field
+                label="Your name and title"
+                name="contactName" value={form.contactName} onChange={handleChange}
+                placeholder="e.g. Ray Robinson, Founder"
+              />
+              <Field
+                label="Website URL"
+                name="website" value={form.website} onChange={handleChange}
+                placeholder="https://yoursite.com"
+              />
+              <Field
+                label="Email address"
+                name="email" value={form.email} onChange={handleChange}
+                placeholder="your@email.com"
+                required
+              />
+              <Field
+                label="Instagram URL (optional)"
+                name="instagramUrl" value={form.instagramUrl} onChange={handleChange}
+                placeholder="https://instagram.com/youraccount"
+              />
+              <div className="space-y-4 border-t border-slate-800 pt-4">
+                <Field
+                  q="Q2" label="What does your business do, who do you serve, and what outcome do you deliver?"
+                  name="businessDescription" value={form.businessDescription} onChange={handleChange}
+                  placeholder="e.g. I run an e-commerce store selling curated wellness products to women 45+. Customers leave with products that feel meaningful, not just functional."
+                  multiline
+                />
+              </div>
+              <div className="space-y-4 border-t border-slate-800 pt-4">
+                <SelectField
+                  q="Q3" label="Business model and current revenue range"
+                  name="industryModel" value={form.industryModel}
+                  onChange={handleChange}
+                  options={["E-commerce", "B2B Consulting", "Coaching / Courses", "SaaS / Software", "Agency", "Creator / Influencer", "Retail", "Service Business", "Nonprofit", "Other"]}
+                />
+                <SelectField
+                  label="Annual revenue"
+                  name="revenueTrajectory" value={form.revenueTrajectory}
+                  onChange={handleChange}
+                  options={["Pre-revenue / just starting", "Under $50K/year", "$50K–$100K/year", "$100K–$250K/year", "$250K–$500K/year", "$500K+/year"]}
+                />
+                <RadioGroup
+                  label="Team size"
+                  name="teamStructure" value={form.teamStructure}
+                  onChange={(v) => handleRadio("teamStructure", v)}
+                  options={["Just me", "Me + 1–2 contractors", "Small team (3–5)", "6+"]}
+                />
+              </div>
+            </div>
           )}
 
+          {/* ── STEP 2: Audience & Offer ────────────────────────────── */}
           {step === 2 && (
-            <>
-              <Field label="Investment Capacity (for AI systems)" name="investmentCapacity" value={formData.investmentCapacity} onChange={handleChange} placeholder="e.g. $2,000–$5,000 / month" />
-              <Field label="How Does Success Look in 90 Days?" name="successMetrics" value={formData.successMetrics} onChange={handleChange} placeholder="Specific, measurable outcomes" multiline />
-              <Field label="Existing Data & Assets" name="existingAssets" value={formData.existingAssets} onChange={handleChange} placeholder="CRM data, email list, content library, etc." multiline />
-              <Field label="Biggest Untapped Opportunity" name="untappedOpportunity" value={formData.untappedOpportunity} onChange={handleChange} placeholder="What could generate the most revenue if you had more bandwidth?" multiline />
-            </>
+            <div className="space-y-5">
+              <RadioGroup
+                q="Q4" label="What is your primary goal for the next 90 days?"
+                name="primaryGoal" value={form.primaryGoal}
+                onChange={(v) => handleRadio("primaryGoal", v)}
+                options={["Get more leads or clients", "Automate and simplify operations", "Launch a new offer or product", "Build a content or marketing system", "Stabilize and systematize what already works", "Other"]}
+              />
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q5" label="What is your single biggest challenge right now?"
+                  name="biggestChallenge" value={form.biggestChallenge} onChange={handleChange}
+                  placeholder="The thing that, if solved, would change everything. e.g. I spend 3 hours every day on admin tasks that should take 20 minutes."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q6" label="Describe your ideal client as one real, specific person."
+                  name="idealClient" value={form.idealClient} onChange={handleChange}
+                  placeholder="e.g. Sandra is 52, runs a solo bookkeeping practice, has 14 clients, and is drowning in follow-up emails. She has tried Zapier once but gave up."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q7" label="What is your core offer and what transformation does it deliver?"
+                  name="coreOffer" value={form.coreOffer} onChange={handleChange}
+                  placeholder="e.g. My 90-Day Automation Sprint. Sandra walks away with a full workflow system and 8 hours per week back."
+                  multiline
+                />
+              </div>
+            </div>
           )}
 
+          {/* ── STEP 3: Operations ──────────────────────────────────── */}
           {step === 3 && (
-            <>
-              <Field label="Biggest Scaling Bottleneck" name="scalingBottleneck" value={formData.scalingBottleneck} onChange={handleChange} placeholder="What breaks first when you grow?" multiline />
-              <div className="space-y-1.5">
-                <label className="text-slate-300 text-sm font-medium">Implementation Timeline</label>
-                <div className="flex flex-wrap gap-2">
-                  {TIMELINE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => handleChange("timeline", opt)}
-                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                        formData.timeline === opt
-                          ? "bg-purple-600 border-purple-600 text-white"
-                          : "border-slate-700 text-slate-400 hover:border-purple-500 hover:text-purple-300"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-5">
+              <Field
+                q="Q8" label="What makes your approach different from everything else available?"
+                name="uniqueApproach" value={form.uniqueApproach} onChange={handleChange}
+                placeholder="e.g. Most automation consultants hand you a tutorial and leave. I build the system with you in 14 days, using your actual tools."
+                multiline
+              />
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q9" label="What are the top 3 daily tasks or workflows that drain the most time or energy?"
+                  name="dailyDrains" value={form.dailyDrains} onChange={handleChange}
+                  placeholder="e.g. (1) Manually sending follow-up emails. (2) Copying client info into my CRM. (3) Posting the same content to 3 platforms separately."
+                  multiline
+                />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-slate-300 text-sm font-medium">AI & Automation Comfort Level</label>
-                <div className="space-y-2">
-                  {AI_COMFORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => handleChange("aiComfort", opt)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors ${
-                        formData.aiComfort === opt
-                          ? "bg-purple-600/20 border-purple-500 text-purple-300"
-                          : "border-slate-700 text-slate-400 hover:border-purple-500/50"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q10" label="List every tool you currently use in your business."
+                  name="techStack" value={form.techStack} onChange={handleChange}
+                  placeholder="e.g. Gmail, Google Calendar, Notion, QuickBooks, Canva, Instagram, Calendly, WhatsApp, WooCommerce, Stripe"
+                  multiline
+                />
               </div>
-              <Field label="Dream Scenario (3 Years Out)" name="dreamScenario" value={formData.dreamScenario} onChange={handleChange} placeholder="If everything went perfectly, what would your business look like?" multiline />
-            </>
+              <div className="border-t border-slate-800 pt-4">
+                <SelectField
+                  q="Q11" label="Monthly budget for AI tools and automation"
+                  name="investmentCapacity" value={form.investmentCapacity}
+                  onChange={handleChange}
+                  options={["Under $100/month", "$100–$300/month", "$300–$600/month", "$600–$1,000/month", "$1,000+/month"]}
+                />
+              </div>
+            </div>
           )}
 
+          {/* ── STEP 4: Vision & Voice ───────────────────────────────── */}
           {step === 4 && (
-            <>
-              <Field label="Unique Value Proposition" name="uvp" value={formData.uvp} onChange={handleChange} placeholder="What do you do that no one else does?" multiline required />
-              <Field label="Ideal Client Profile" name="idealClient" value={formData.idealClient} onChange={handleChange} placeholder="Who gets the most value from working with you?" multiline />
-              <Field label="Your Unconventional Approach" name="unconventionalApproach" value={formData.unconventionalApproach} onChange={handleChange} placeholder="How do you do things differently?" multiline />
-              <Field label="Anything Else We Should Know" name="anythingElse" value={formData.anythingElse} onChange={handleChange} placeholder="Any context that would help us serve you better" multiline />
-            </>
+            <div className="space-y-5">
+              <RadioGroup
+                q="Q12" label="Comfort level with AI and automation"
+                name="aiComfort" value={form.aiComfort}
+                onChange={(v) => handleRadio("aiComfort", v)}
+                options={["Early adopter — I already use AI tools daily", "Curious but cautious — I want to learn as we go", "Skeptical — show me it works before I commit", "Beginner — I am starting from scratch"]}
+              />
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q13" label="What does success look like for you personally in 90 days?"
+                  name="successMetrics" value={form.successMetrics} onChange={handleChange}
+                  placeholder="Not just business metrics. How do you want to feel? e.g. I want to finish work by 3pm and feel like my systems are running instead of me running them."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q14" label="What is your 3-year dream scenario for this business?"
+                  name="dreamScenario" value={form.dreamScenario} onChange={handleChange}
+                  placeholder="e.g. Fully automated e-commerce generating $500K/year, spending mornings writing and afternoons with family."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <RadioGroup
+                  q="Q15" label="How would you describe your brand voice?"
+                  name="brandVoice" value={form.brandVoice}
+                  onChange={(v) => handleRadio("brandVoice", v)}
+                  options={["Warm and conversational", "Direct and no-nonsense", "Authoritative and expert", "Spiritual and values-driven", "Bold and energetic", "Calm and grounding", "Other — I'll describe it below"]}
+                />
+                {form.brandVoice === "Other — I'll describe it below" && (
+                  <div className="mt-2">
+                    <textarea
+                      name="brandVoice"
+                      value={form.brandVoice === "Other — I'll describe it below" ? "" : form.brandVoice}
+                      onChange={handleChange}
+                      placeholder="Paste 2–3 sentences that sound exactly like you"
+                      rows={2}
+                      className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/60 resize-none"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
+          {/* ── STEP 5: Growth Intelligence ─────────────────────────── */}
           {step === 5 && (
+            <div className="space-y-5">
+              <Field
+                q="Q16" label="Words, phrases, or tones that must never appear in your content"
+                name="bannedWords" value={form.bannedWords} onChange={handleChange}
+                placeholder='e.g. Never use "hustle," "crush it," or anything that sounds like bro-marketing. Avoid clinical or cold language.'
+              />
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q17" label="What is the core belief your ideal client needs to accept before they will buy from you?"
+                  name="persuasivePremise" value={form.persuasivePremise} onChange={handleChange}
+                  placeholder="e.g. My client needs to believe that the chaos is not a lack of effort but a lack of systems — and that the right system can be built in days, not months."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q18" label="Do you have any existing proof, testimonials, or client results?"
+                  name="testimonials" value={form.testimonials} onChange={handleChange}
+                  placeholder='e.g. "Ray saved me 10 hours in the first week." — Sandra M. Also: reduced tool count from 11 to 4 for a coaching client in 14 days.'
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q19" label="What is the single biggest untapped opportunity in your business right now?"
+                  name="untappedOpportunity" value={form.untappedOpportunity} onChange={handleChange}
+                  placeholder="e.g. I have 400 past customers who have never received a follow-up email. A re-engagement sequence could generate $20K in 60 days."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="Q20" label="Is there anything else we should know about your business, values, or constraints?"
+                  name="anythingElse" value={form.anythingElse} onChange={handleChange}
+                  placeholder="e.g. I will not use manipulative scarcity tactics. I have ADHD and need systems simple enough that I will actually use them."
+                  multiline
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 6: Completion + Optional offer ─────────────────── */}
+          {step === 6 && (
+            <div className="space-y-6 text-center">
+              <div className="flex justify-center">
+                <CheckCircle className="w-16 h-16 text-green-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Your strategy brief is ready.</h2>
+                <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">
+                  Your 20 answers power your 90-day plan, automation roadmap, GPT briefings, and Campaign DNA.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={finish}
+                  disabled={saving}
+                  className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                >
+                  {saving ? "Saving…" : "View My Strategy Brief →"}
+                </button>
+
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-left space-y-2">
+                  <p className="text-purple-200 text-sm font-medium">Want the complete package?</p>
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Answering 10 more questions gives us everything needed to build your full campaign, content system, and monetization plan — including Instagram monetization if that is a goal. Skip them if you only want the strategy brief and automation plan.
+                  </p>
+                  <button
+                    onClick={() => { setShowOptional(true); setStep(7); window.scrollTo(0, 0); }}
+                    className="w-full border border-purple-500/30 text-purple-300 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-500/10 transition-colors"
+                  >
+                    Fill in the 10 deep-dive questions →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 7: Optional Deep-Dive (O1–O10) ────────────────── */}
+          {step === 7 && (
             <div className="space-y-5">
               <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
                 <p className="text-purple-300 text-sm">
-                  Optional — Powers GhostwriterOS. Skip if you just want the strategy brief.
+                  Optional — Powers Campaigns, Social Media, Offers, and Customer Offerings. Skip if you only want the strategy brief and automation plan.
                 </p>
               </div>
-              <Field label="Brand Bio" name="brandBio" value={formData.brandBio} onChange={handleChange} placeholder="1–3 sentence brand story" multiline />
-              <Field label="Brand Voice" name="brandVoice" value={formData.brandVoice} onChange={handleChange} placeholder="e.g. Direct, empowering, slightly edgy — never corporate" multiline />
-              <Field label="Banned Words / Phrases" name="bannedWords" value={formData.bannedWords} onChange={handleChange} placeholder="Words or phrases to never use" />
-              <Field label="Persuasive Premise" name="persuasivePremise" value={formData.persuasivePremise} onChange={handleChange} placeholder="Core belief your audience shares" multiline />
-              <Field label="Testimonials / Social Proof" name="testimonials" value={formData.testimonials} onChange={handleChange} placeholder="Key results or quotes from clients/customers" multiline />
-              <Field label="Content Keywords" name="contentKeywords" value={formData.contentKeywords} onChange={handleChange} placeholder="Topics and keywords to focus content around" />
-              <Field label="Offer Keywords" name="offerKeywords" value={formData.offerKeywords} onChange={handleChange} placeholder="Keywords specific to your offer/product" />
+
+              <Field
+                q="O1" label="What content have you already created that has gotten the strongest response?"
+                name="bestContent" value={form.bestContent} onChange={handleChange}
+                placeholder="e.g. A reel about why wellness products often erase Indigenous origins got 4,200 views. My audience responds to historical context and authenticity."
+                multiline
+              />
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O2" label="Top 3–5 keywords your ideal client would search for what you offer"
+                  name="contentKeywords" value={form.contentKeywords} onChange={handleChange}
+                  placeholder="e.g. ancestral nutrition products, wellness for Black women over 50, natural remedies for inflammation"
+                />
+                <div className="mt-3">
+                  <Field
+                    label="Offer-specific keywords"
+                    name="offerKeywords" value={form.offerKeywords} onChange={handleChange}
+                    placeholder="e.g. detox bundle, heritage supplement, immunity kit"
+                  />
+                </div>
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O3" label="Do you want to monetize Instagram? Describe your current presence."
+                  name="instagramDesc" value={form.instagramDesc} onChange={handleChange}
+                  placeholder="e.g. 2,800 followers, women 40–60. Reels with historical context outperform everything. I've never made a direct offer on Instagram."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O4" label="Walk through your current lead generation and sales process from first contact to closed sale."
+                  name="salesProcess" value={form.salesProcess} onChange={handleChange}
+                  placeholder="e.g. Someone finds me on Instagram, clicks bio link, lands on my Shopify store. No email capture, no follow-up sequence."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O5" label="Do you have a lead magnet or freebie? If not, what problem could a free resource solve?"
+                  name="leadMagnet" value={form.leadMagnet} onChange={handleChange}
+                  placeholder='e.g. No lead magnet yet. A free guide called "5 Ancestral Ingredients Your Grandmother Used" would be perfect.'
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O6" label="What offer tiers do you have or want to build? (Entry, core, premium)"
+                  name="offerTiers" value={form.offerTiers} onChange={handleChange}
+                  placeholder="e.g. Entry: $27 starter kit. Core: $97 monthly box. Premium: $497 consultation package with curated products."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O7" label="Who are your top 3 competitors or brands you admire, and what do they do better?"
+                  name="competitors" value={form.competitors} onChange={handleChange}
+                  placeholder="e.g. (1) Nubian Heritage — strong brand story. (2) Anita's Organics — great email marketing. (3) A local herbalist with 40K followers who sells out every drop."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O8" label="What is the hidden fear your ideal client has that stops them from buying?"
+                  name="hiddenFear" value={form.hiddenFear} onChange={handleChange}
+                  placeholder="e.g. They are afraid of wasting money again. They have been disappointed before and don't want to feel foolish."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O9" label="What are your content creation constraints? Time, tools, what has caused you to stop posting consistently?"
+                  name="contentConstraints" value={form.contentConstraints} onChange={handleChange}
+                  placeholder="e.g. I can create content for about 2 hours per week. I hate being on camera. I stop posting when I run out of ideas."
+                  multiline
+                />
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <Field
+                  q="O10" label="What is the one bottleneck that, if removed, would make everything else easier or faster?"
+                  name="scalingBottleneck" value={form.scalingBottleneck} onChange={handleChange}
+                  placeholder="e.g. If I had an automated email sequence that turned first-time buyers into repeat customers, I could stop worrying about new acquisition."
+                  multiline
+                />
+              </div>
             </div>
           )}
+
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handleBack}
-            disabled={step === 0}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
-
-          <div className="flex items-center gap-2">
-            {saved && (
-              <span className="text-green-400 text-xs flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Saved
-              </span>
-            )}
+        <div className="flex items-center justify-between mt-6">
+          {step > 1 && step < 6 ? (
             <button
-              onClick={handleNext}
-              disabled={saving}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+              onClick={back}
+              className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 text-sm transition-colors"
             >
-              {saving ? "Saving..." : step === STEPS.length - 1 ? "Complete" : "Next"}
-              {!saving && <ChevronRight className="w-4 h-4" />}
+              <ChevronLeft className="w-4 h-4" /> Back
             </button>
-          </div>
+          ) : <div />}
+
+          {step < 5 && (
+            <button
+              onClick={next}
+              disabled={saving}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Continue"} <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+
+          {step === 5 && (
+            <button
+              onClick={next}
+              disabled={saving}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Complete"} <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+
+          {step === 7 && (
+            <button
+              onClick={finishWithOptional}
+              disabled={saving}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Submit Everything →"}
+            </button>
+          )}
         </div>
       </div>
     </div>

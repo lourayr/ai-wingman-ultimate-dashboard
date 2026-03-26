@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, LayoutDashboard, Users, Zap, Target, Settings } from "lucide-react";
+import { Brain, LayoutDashboard, Users, Zap, Target, Settings, Sparkles } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ceo", label: "CEO Command", icon: Brain },
   { href: "/flow", label: "Flow OS", icon: Zap },
   { href: "/shadow", label: "Shadow Ops", icon: Target },
+  { href: "/gpts", label: "AI Tools", icon: Sparkles },
   { href: "/onboarding", label: "Onboarding", icon: Users },
   { href: "/ops", label: "Ops", icon: Settings },
 ];

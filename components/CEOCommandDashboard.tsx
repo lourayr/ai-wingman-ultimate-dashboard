@@ -401,7 +401,8 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
     }
   }, []);
 
-  const generateAIReport = useCallback(async () => {
+  const generateAIReport = useCallback(async (force = false) => {
+    if (force) sessionStorage.removeItem("ai_insights_cache");
     setGeneratingAI(true);
     setAiError(null);
     try {
@@ -709,7 +710,7 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
               Auto-runs on load when Gmail is connected.
             </p>
             <button
-              onClick={generateAIReport}
+              onClick={() => generateAIReport()}
               disabled={!googleData.gmail.connected && !googleData.calendar.connected}
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -730,7 +731,7 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
         {aiError && (
           <div className="space-y-2">
             <p className="text-red-400 text-sm">{aiError}</p>
-            <button onClick={generateAIReport} className="text-purple-400 text-xs hover:underline">Try again</button>
+            <button onClick={() => generateAIReport()} className="text-purple-400 text-xs hover:underline">Try again</button>
           </div>
         )}
         {aiInsights.length > 0 && (
@@ -750,7 +751,7 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
               </div>
             ))}
             <div className="flex items-center gap-3 pt-1">
-              <button onClick={generateAIReport} disabled={generatingAI} className="text-slate-500 hover:text-purple-400 text-xs flex items-center gap-1 transition-colors">
+              <button onClick={() => generateAIReport(true)} disabled={generatingAI} className="text-slate-500 hover:text-purple-400 text-xs flex items-center gap-1 transition-colors">
                 <RefreshCw className={`w-3 h-3 ${generatingAI ? "animate-spin" : ""}`} />
                 Refresh
               </button>

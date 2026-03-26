@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   TrendingUp,
@@ -173,6 +174,7 @@ function buildFullBrief(c: FullClientData): string {
 }
 
 export default function DashboardMockup() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("strawman");
   const [realClients, setRealClients] = useState<RealSubmission[]>([]);
   const [loadingReal, setLoadingReal] = useState(false);
@@ -316,8 +318,8 @@ export default function DashboardMockup() {
                 {realClients.map((c) => (
                   <div
                     key={c.session_id}
-                    className="glass rounded-xl p-5 space-y-3 cursor-pointer hover:border-slate-600 transition-colors"
-                    onClick={() => openRealClient(c.session_id)}
+                    className="glass rounded-xl p-5 space-y-3 cursor-pointer hover:border-purple-500/40 transition-colors"
+                    onClick={() => router.push(`/shadow?client=${c.session_id}`)}
                   >
                     <div className="flex items-start justify-between">
                       <div>
