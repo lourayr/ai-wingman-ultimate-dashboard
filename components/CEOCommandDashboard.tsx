@@ -49,6 +49,7 @@ interface GmailData {
     snippet: string;
   } | null;
   importantMessages?: ImportantMessage[];
+  aiNewsletters?: Array<{ subject: string; from: string; date: string; body: string }>;
 }
 
 interface TelegramMsg { id: number; text: string; sender: string; isBot: boolean; date: string; time: string }
@@ -83,6 +84,15 @@ interface AiInsight {
   action: string;
   priority: "high" | "medium" | "low";
   type: "revenue" | "attention" | "risk" | "opportunity" | "client";
+}
+
+interface AiBriefItem {
+  subject: string;
+  from: string;
+  coreSignal: string;
+  relevantItems: string[];
+  act: string;
+  lowSignal: boolean;
 }
 
 interface GoogleData {
@@ -345,6 +355,7 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [calmScore, setCalmScore] = useState(72);
   const [aiInsights, setAiInsights] = useState<AiInsight[]>([]);
+  const [aiBrief, setAiBrief] = useState<AiBriefItem[]>([]);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiModel, setAiModel] = useState<string>("openai/gpt-4o-mini");
@@ -422,8 +433,9 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
       const data = await res.json();
       if (data.ok) {
         setAiInsights(data.insights);
+        if (data.aiBrief?.length) setAiBrief(data.aiBrief);
         setAiModelUsed(data.model ?? aiModel);
-        sessionStorage.setItem("ai_insights_cache", JSON.stringify({ insights: data.insights, model: data.model, ts: Date.now() }));
+        sessionStorage.setItem("ai_insights_cache", JSON.stringify({ insights: data.insights, aiBrief: data.aiBrief ?? [], model: data.model, ts: Date.now() }));
       } else {
         setAiError(data.error ?? "Failed to generate insights");
       }
@@ -483,10 +495,11 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
     const cached = sessionStorage.getItem("ai_insights_cache");
     if (cached) {
       try {
-        const { insights, ts } = JSON.parse(cached);
+        const { insights, aiBrief: cachedBrief, ts } = JSON.parse(cached);
         // Use cache if it's less than 30 minutes old
         if (Date.now() - ts < 30 * 60 * 1000 && insights?.length > 0) {
           setAiInsights(insights);
+          if (cachedBrief?.length) setAiBrief(cachedBrief);
           if (cached && JSON.parse(cached).model) setAiModelUsed(JSON.parse(cached).model);
           setAutoTriggered(true);
           return;
@@ -759,6 +772,37 @@ export default function CEOCommandDashboard({ standalone = true, connectedParam 
                 <span className="text-slate-600 text-xs">via {MODEL_OPTIONS.find(m => m.id === aiModelUsed)?.label ?? aiModelUsed}</span>
               )}
             </div>
+
+            {/* AI Brief — Newsletter Analysis */}
+            {aiBrief.length > 0 && (
+              <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">AI Brief — Newsletter Signal (this week)</p>
+                {aiBrief.map((item, i) => (
+                  <div key={i} className={`rounded-lg px-4 py-3 space-y-2 border ${item.lowSignal ? "bg-slate-900/30 border-slate-800" : "bg-purple-500/5 border-purple-500/15"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-slate-200 text-sm font-medium leading-snug">{item.subject}</p>
+                        <p className="text-slate-500 text-xs">{item.from}</p>
+                      </div>
+                      {item.lowSignal && (
+                        <span className="text-xs bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded shrink-0">Low Signal</span>
+                      )}
+                    </div>
+                    {!item.lowSignal && (
+                      <>
+                        <p className="text-slate-300 text-sm leading-snug">{item.coreSignal}</p>
+                        <ul className="space-y-0.5">
+                          {(item.relevantItems ?? []).map((bullet, j) => (
+                            <li key={j} className="text-slate-400 text-xs flex gap-1.5"><span className="text-purple-400 shrink-0">•</span>{bullet}</li>
+                          ))}
+                        </ul>
+                        <p className="text-cyan-300 text-xs">→ {item.act}</p>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Section>

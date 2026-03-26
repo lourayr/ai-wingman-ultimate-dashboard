@@ -10,6 +10,7 @@ interface IncomingData {
     orderCount?: number;
     importantMessages?: Array<{ subject: string; from: string; snippet: string }>;
     geminiSummary?: { subject: string; body: string } | null;
+    aiNewsletters?: Array<{ subject: string; from: string; date: string; body: string }>;
   };
   calendar?: {
     connected?: boolean;
@@ -95,6 +96,13 @@ function buildPrompt(data: IncomingData): string {
   const draftCount = clients.filter((c) => c.status !== "complete").length;
   const completeCount = clients.filter((c) => c.status === "complete").length;
 
+  const newsletterSection = (gmail.aiNewsletters ?? []).length > 0
+    ? `AI NEWSLETTERS (${gmail.aiNewsletters!.length} recent):\n` +
+      (gmail.aiNewsletters ?? []).map((n) =>
+        `  From: ${n.from}\n  Subject: ${n.subject}\n  Content: ${n.body.slice(0, 800)}`
+      ).join("\n\n---\n\n")
+    : "AI NEWSLETTERS: none found this week";
+
   return `You are an elite AI advisor for a solo entrepreneur running three businesses simultaneously:
 1. AI Wingman — B2B AI consulting, goal: $25K/month
 2. Golden Age Treasures — WooCommerce e-commerce, $100–200K/year
@@ -123,6 +131,8 @@ ${telegramSection}
 ${asanaSection}
 
 ${notionSection}
+
+${newsletterSection}
 
 ═══ YOUR TASK ═══
 
@@ -225,7 +235,65 @@ export async function POST(request: NextRequest) {
     if (!insights) {
       return NextResponse.json({ ok: false, error: "Non-JSON AI response", raw: rawContent.slice(0, 300) });
     }
-    return NextResponse.json({ ok: true, insights, model: selectedModel, toolsUsed: {
+    // ── AI Newsletter Brief (separate DeepSeek call, non-blocking) ───────────────
+    let aiBrief: unknown[] = [];
+    const newsletters = body.gmail?.aiNewsletters ?? [];
+    if (newsletters.length > 0 && openrouterKey) {
+      try {
+        const newsletterSystemPrompt = `You are reading email newsletters on behalf of Ray Robinson — strategic leader, author, and conscious systems thinker at the intersection of ancestral wisdom, quantum consciousness, leadership, and emerging technology.
+
+Your Job: Extract signal from noise. Surface what is relevant, actionable, or worth Ray's attention. Discard filler, promotional padding, and recycled takes.
+
+Reading Lens:
+- Strategic relevance: Does this connect to AI, automation, leadership, conscious business, or systems change?
+- Actionability: Is there something Ray can use, test, deploy, or decide on within 48 hours?
+- Signal strength: Is this a leading indicator of something bigger, or noise dressed as news?
+
+For EACH newsletter, return a JSON object with:
+- subject: the newsletter subject
+- from: sender name (strip the email address, keep just the name/publication)
+- coreSignal: 2-3 sentences. What is this actually saying, beneath the framing? Strip the pitch.
+- relevantItems: array of 2-4 specific bullet strings — items, tools, or data points Ray should know. Direct. One line per item.
+- act: string — what specifically should Ray do (name the action, not the category). If nothing actionable, write "Nothing actionable — skip."
+- lowSignal: boolean — true if this is recycled content or low-signal
+
+Return ONLY a valid JSON array of these objects, one per newsletter.`;
+
+        const newsletterContent = newsletters.map((n, i) =>
+          `NEWSLETTER ${i + 1}:\nSubject: ${n.subject}\nFrom: ${n.from}\nDate: ${n.date}\n\n${n.body}`
+        ).join("\n\n========\n\n");
+
+        const nlRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openrouterKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://ai-wingman-ultimate-dashboard.vercel.app",
+            "X-Title": "AI Wingman",
+          },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-r1",
+            messages: [
+              { role: "system", content: newsletterSystemPrompt },
+              { role: "user", content: newsletterContent },
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        if (nlRes.ok) {
+          const nlData = await nlRes.json();
+          let nlRaw = nlData.choices?.[0]?.message?.content ?? "[]";
+          nlRaw = nlRaw.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/```(?:json)?\s*/gi, "").trim();
+          try { aiBrief = JSON.parse(nlRaw); } catch {
+            const s = nlRaw.indexOf("["); const e = nlRaw.lastIndexOf("]");
+            if (s !== -1 && e > s) { try { aiBrief = JSON.parse(nlRaw.slice(s, e + 1)); } catch { /* ignore */ } }
+          }
+        }
+      } catch { /* non-blocking — main insights still return */ }
+    }
+
+    return NextResponse.json({ ok: true, insights, aiBrief, model: selectedModel, toolsUsed: {
       gmail: !!(body.gmail?.connected),
       calendar: !!(body.calendar?.connected),
       telegram: !!(body.telegram?.connected),

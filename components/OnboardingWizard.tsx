@@ -220,6 +220,7 @@ export default function OnboardingWizard({ forceNew = false }: { forceNew?: bool
     return id;
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showOptional, setShowOptional] = useState(false);
 
   // Restore in-progress form from localStorage (skip if forceNew — already cleared above)
@@ -262,66 +263,84 @@ export default function OnboardingWizard({ forceNew = false }: { forceNew?: bool
     ? (form.aiComfortOther || form.aiComfort)
     : form.aiComfort;
 
-  const save = async (finalStatus?: string) => {
+  const save = async (finalStatus?: string): Promise<boolean> => {
     setSaving(true);
+    setSaveError(null);
+    const payload = {
+      sessionId,
+      status: finalStatus ?? "draft",
+      currentStep: step,
+      email: form.email, businessName: form.businessName, website: form.website,
+      industryModel: form.industryModel, teamStructure: form.teamStructure,
+      revenueTrajectory: form.revenueTrajectory,
+      primaryGoal: resolvedPrimaryGoal,
+      biggestChallenge: form.biggestChallenge, techStack: form.techStack,
+      investmentCapacity: form.investmentCapacity, successMetrics: form.successMetrics,
+      untappedOpportunity: form.untappedOpportunity,
+      aiComfort: resolvedAiComfort,
+      dreamScenario: form.dreamScenario,
+      uvp: form.uniqueApproach,
+      idealClient: form.idealClient, unconventionalApproach: form.uniqueApproach,
+      anythingElse: form.anythingElse,
+      brandVoice: resolvedBrandVoice, bannedWords: form.bannedWords,
+      persuasivePremise: form.persuasivePremise, testimonials: form.testimonials,
+      contentKeywords: form.contentKeywords, offerKeywords: form.offerKeywords,
+      brandBio: form.businessDescription,
+      scalingBottleneck: form.scalingBottleneck,
+      // v2
+      contactName: form.contactName, businessDescription: form.businessDescription,
+      coreOffer: form.coreOffer, dailyDrains: form.dailyDrains,
+      instagramUrl: form.instagramUrl, instagramDesc: form.instagramDesc,
+      bestContent: form.bestContent, salesProcess: form.salesProcess,
+      leadMagnet: form.leadMagnet, offerTiers: form.offerTiers,
+      competitors: form.competitors, hiddenFear: form.hiddenFear,
+      contentConstraints: form.contentConstraints,
+    };
+    // Always back up to localStorage so summary has a fallback
+    localStorage.setItem(`wingman-backup-${sessionId}`, JSON.stringify(payload));
     try {
-      await fetch("/api/onboarding", {
+      const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId,
-          status: finalStatus ?? "draft",
-          currentStep: step,
-          email: form.email, businessName: form.businessName, website: form.website,
-          industryModel: form.industryModel, teamStructure: form.teamStructure,
-          revenueTrajectory: form.revenueTrajectory,
-          primaryGoal: resolvedPrimaryGoal,
-          biggestChallenge: form.biggestChallenge, techStack: form.techStack,
-          investmentCapacity: form.investmentCapacity, successMetrics: form.successMetrics,
-          untappedOpportunity: form.untappedOpportunity,
-          aiComfort: resolvedAiComfort,
-          dreamScenario: form.dreamScenario,
-          uvp: form.uniqueApproach,
-          idealClient: form.idealClient, unconventionalApproach: form.uniqueApproach,
-          anythingElse: form.anythingElse,
-          brandVoice: resolvedBrandVoice, bannedWords: form.bannedWords,
-          persuasivePremise: form.persuasivePremise, testimonials: form.testimonials,
-          contentKeywords: form.contentKeywords, offerKeywords: form.offerKeywords,
-          brandBio: form.businessDescription,
-          scalingBottleneck: form.scalingBottleneck,
-          // v2
-          contactName: form.contactName, businessDescription: form.businessDescription,
-          coreOffer: form.coreOffer, dailyDrains: form.dailyDrains,
-          instagramUrl: form.instagramUrl, instagramDesc: form.instagramDesc,
-          bestContent: form.bestContent, salesProcess: form.salesProcess,
-          leadMagnet: form.leadMagnet, offerTiers: form.offerTiers,
-          competitors: form.competitors, hiddenFear: form.hiddenFear,
-          contentConstraints: form.contentConstraints,
-        }),
+        body: JSON.stringify(payload),
       });
-    } catch { /* ignore */ }
+      const data = await res.json().catch(() => ({ ok: false, error: "Invalid response" }));
+      if (!data.ok) {
+        setSaveError(`Save failed: ${data.error ?? "unknown error"}. Your data is backed up locally.`);
+        setSaving(false);
+        return false;
+      }
+    } catch {
+      setSaveError("Network error — your data is backed up locally. Try again or click the button again to continue.");
+      setSaving(false);
+      return false;
+    }
     setSaving(false);
+    return true;
   };
 
   const next = async () => {
-    await save();
+    await save(); // intermediate saves don't block progress on failure
     setStep((s) => s + 1);
     window.scrollTo(0, 0);
   };
 
   const back = () => {
+    setSaveError(null);
     setStep((s) => Math.max(1, s - 1));
     window.scrollTo(0, 0);
   };
 
   const finish = async () => {
-    await save("complete");
+    const ok = await save("complete");
+    if (!ok) return; // stay on step 6, show error
     localStorage.removeItem("wingman-form-draft");
     router.push(`/onboarding/summary?session=${sessionId}`);
   };
 
   const finishWithOptional = async () => {
-    await save("complete");
+    const ok = await save("complete");
+    if (!ok) return; // stay on step 7, show error
     localStorage.removeItem("wingman-form-draft");
     router.push(`/onboarding/summary?session=${sessionId}`);
   };
@@ -731,6 +750,14 @@ export default function OnboardingWizard({ forceNew = false }: { forceNew?: bool
           )}
 
         </div>
+
+        {/* Save error banner */}
+        {saveError && (
+          <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300 space-y-1">
+            <p className="font-medium">⚠️ {saveError}</p>
+            <p className="text-xs text-red-400">Your answers are saved in this browser. Click the button again to retry submitting.</p>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex items-center justify-between mt-6">

@@ -219,8 +219,60 @@ export default function SummaryEditor({ sessionId }: { sessionId?: string | null
     if (!sessionId) { setLoading(false); return; }
     fetch(`/api/onboarding?session=${sessionId}`)
       .then((r) => r.json())
-      .then((d) => { if (d.ok) setData(d.submission); })
-      .catch(() => {})
+      .then((d) => {
+        if (d.ok) {
+          setData(d.submission);
+        } else {
+          // Fallback: check localStorage backup written by OnboardingWizard
+          const backup = localStorage.getItem(`wingman-backup-${sessionId}`);
+          if (backup) {
+            try {
+              const payload = JSON.parse(backup);
+              // Build a SubmissionData-shaped object from the payload
+              setData({
+                session_id: sessionId,
+                status: payload.status ?? "complete",
+                email: payload.email,
+                business_name: payload.businessName,
+                website: payload.website,
+                industry_model: payload.industryModel,
+                team_structure: payload.teamStructure,
+                revenue_trajectory: payload.revenueTrajectory,
+                primary_goal: payload.primaryGoal,
+                biggest_challenge: payload.biggestChallenge,
+                tech_stack: payload.techStack,
+                investment_capacity: payload.investmentCapacity,
+                success_metrics: payload.successMetrics,
+                untapped_opportunity: payload.untappedOpportunity,
+                ai_comfort: payload.aiComfort,
+                dream_scenario: payload.dreamScenario,
+                uvp: payload.uvp,
+                ideal_client: payload.idealClient,
+                unconventional_approach: payload.unconventionalApproach,
+                anything_else: payload.anythingElse,
+                brand_bio: payload.brandBio,
+                brand_voice: payload.brandVoice,
+                banned_words: payload.bannedWords,
+                persuasive_premise: payload.persuasivePremise,
+                testimonials: payload.testimonials,
+                content_keywords: payload.contentKeywords,
+                offer_keywords: payload.offerKeywords,
+                scaling_bottleneck: payload.scalingBottleneck,
+              });
+            } catch { /* ignore malformed backup */ }
+          }
+        }
+      })
+      .catch(() => {
+        // Network error — try localStorage backup
+        const backup = localStorage.getItem(`wingman-backup-${sessionId}`);
+        if (backup) {
+          try {
+            const payload = JSON.parse(backup);
+            setData({ session_id: sessionId, status: "complete", business_name: payload.businessName, email: payload.email });
+          } catch { /* ignore */ }
+        }
+      })
       .finally(() => setLoading(false));
   }, [sessionId]);
 

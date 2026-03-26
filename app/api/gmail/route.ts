@@ -195,6 +195,35 @@ export async function GET() {
       orderCount = orderList.messages?.length ?? 0;
     }
 
+    // AI newsletters — search recent emails about AI, automation, emerging tech
+    const aiNewsletterQuery = encodeURIComponent(
+      'newer_than:7d (subject:AI OR subject:"artificial intelligence" OR subject:automation OR subject:"machine learning" OR subject:GPT OR subject:OpenAI OR subject:Claude OR subject:"agentic") -from:me -category:promotions'
+    );
+    const aiNewsRes = await googleFetch(
+      `https://www.googleapis.com/gmail/v1/users/me/messages?q=${aiNewsletterQuery}&maxResults=5`
+    );
+    const aiNewsletters: Array<{ subject: string; from: string; date: string; body: string }> = [];
+    if (aiNewsRes?.ok) {
+      const aiList = (await aiNewsRes.json()) as GmailListResponse;
+      for (const item of (aiList.messages ?? []).slice(0, 4)) {
+        const msgRes = await googleFetch(
+          `https://www.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=full`
+        );
+        if (msgRes?.ok) {
+          const msg = (await msgRes.json()) as GmailMessage;
+          const body = getBody(msg);
+          if (body.length > 100) { // skip near-empty messages
+            aiNewsletters.push({
+              subject: getHeader(msg, "Subject"),
+              from: getHeader(msg, "From"),
+              date: getHeader(msg, "Date"),
+              body: body.slice(0, 2000),
+            });
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       connected: true,
       email,
@@ -203,6 +232,7 @@ export async function GET() {
       geminiSummary,
       calendarSummary,
       importantMessages,
+      aiNewsletters,
     });
   } catch (error) {
     console.error("Gmail API error:", error);

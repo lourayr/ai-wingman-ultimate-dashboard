@@ -67,7 +67,20 @@ interface ChaosResult {
   recommendedEntry: string;
 }
 
-type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "gpts" | "form" | "dna" | "ghostwriter" | "synthesise";
+interface OpportunityResult {
+  emoji: string;
+  category: string;
+  title: string;
+  description: string;
+  effort: "Low" | "Medium" | "High";
+  impact: "Low" | "Medium" | "High";
+  time_to_implement: string;
+  recommended_tool: string;
+  estimated_roi: string;
+  quick_win: boolean;
+}
+
+type SectionTab = "plan90" | "brief14" | "monetize" | "chaos" | "opportunities" | "gpts" | "form" | "dna" | "ghostwriter" | "synthesise";
 
 function chaosColor(score: number) {
   if (score >= 81) return "text-red-400";
@@ -186,6 +199,7 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
   const [copied, setCopied] = useState<string | null>(null);
   const [gammaJobs, setGammaJobs] = useState<Record<string, { status: "idle" | "sending" | "queued" | "error"; jobId?: string; error?: string }>>({});
   const [chaosResults, setChaosResults] = useState<Record<string, ChaosResult | "loading" | "error">>({});
+  const [oppResults, setOppResults] = useState<Record<string, OpportunityResult[] | "loading" | "error">>({});
 
   const targetClientId = initialClientId ?? null;
 
@@ -263,10 +277,32 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
     }
   };
 
+  const fetchOpportunities = async (c: ClientData) => {
+    const id = c.session_id;
+    if (oppResults[id]) return;
+    setOppResults((prev) => ({ ...prev, [id]: "loading" }));
+    try {
+      const res = await fetch("/api/ai-opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client: c }),
+      });
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.opportunities)) {
+        setOppResults((prev) => ({ ...prev, [id]: data.opportunities as OpportunityResult[] }));
+      } else {
+        setOppResults((prev) => ({ ...prev, [id]: "error" }));
+      }
+    } catch {
+      setOppResults((prev) => ({ ...prev, [id]: "error" }));
+    }
+  };
+
   const getSection = (id: string): SectionTab => activeSection[id] ?? "plan90";
   const setSection = (id: string, tab: SectionTab, c?: ClientData) => {
     setActiveSection((prev) => ({ ...prev, [id]: tab }));
     if (tab === "chaos" && c) fetchChaosScore(c);
+    if (tab === "opportunities" && c) fetchOpportunities(c);
   };
 
   const SECTION_TABS: { id: SectionTab; label: string }[] = [
@@ -274,6 +310,7 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
     { id: "brief14", label: "14-Day Brief" },
     { id: "monetize", label: "Monetize" },
     { id: "chaos", label: "Chaos Score" },
+    { id: "opportunities", label: "AI Opportunities" },
     { id: "gpts", label: "GPT Tools" },
     { id: "ghostwriter", label: "GhostwriterOS" },
     { id: "synthesise", label: "Synthesise" },
@@ -543,6 +580,97 @@ export default function ShadowOpsDashboard({ standalone = true, initialClientId 
                               <Loader2 className="w-3 h-3" /> Regenerate
                             </button>
                           </div>
+                        </div>
+                      );
+                    })()}
+
+                    {section === "opportunities" && (() => {
+                      const or = oppResults[c.session_id];
+                      const CAT_COLORS: Record<string, string> = {
+                        Content: "border-purple-500/40 bg-purple-500/10",
+                        Operations: "border-cyan-500/40 bg-cyan-500/10",
+                        Sales: "border-green-500/40 bg-green-500/10",
+                        Marketing: "border-pink-500/40 bg-pink-500/10",
+                        Data: "border-blue-500/40 bg-blue-500/10",
+                        "Customer Service": "border-amber-500/40 bg-amber-500/10",
+                      };
+                      if (!or || or === "loading") {
+                        return (
+                          <div className="flex items-center justify-center py-10 gap-3 text-slate-400">
+                            <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                            <span className="text-sm">Analyzing AI opportunities with DeepSeek R1…</span>
+                          </div>
+                        );
+                      }
+                      if (or === "error") {
+                        return (
+                          <div className="text-center py-8 space-y-2">
+                            <p className="text-red-400 text-sm">Failed to generate analysis.</p>
+                            <button
+                              onClick={() => { setOppResults((p) => { const n = {...p}; delete n[c.session_id]; return n; }); fetchOpportunities(c); }}
+                              className="text-purple-400 text-xs hover:underline"
+                            >Retry</button>
+                          </div>
+                        );
+                      }
+                      const quickWins = or.filter((o) => o.quick_win);
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-slate-300 text-sm font-medium">AI Implementation Opportunities</p>
+                            <span className="text-xs text-slate-500">Powered by DeepSeek R1</span>
+                          </div>
+                          {quickWins.length > 0 && (
+                            <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                              <p className="text-green-300 text-xs font-medium">⚡ {quickWins.length} Quick Win{quickWins.length > 1 ? "s" : ""} — implementable in under 2 weeks</p>
+                            </div>
+                          )}
+                          <div className="space-y-2.5">
+                            {or.map((opp, i) => (
+                              <div key={i} className={`border rounded-xl p-3.5 space-y-2 ${CAT_COLORS[opp.category] ?? "border-slate-700 bg-slate-800/40"}`}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-xl shrink-0 mt-0.5">{opp.emoji}</span>
+                                    <div>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-white text-sm font-semibold">{opp.title}</span>
+                                        {opp.quick_win && <span className="text-xs bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded">Quick Win</span>}
+                                      </div>
+                                      <span className="text-xs text-slate-500">{opp.category}</span>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-slate-500 shrink-0">#{i + 1}</span>
+                                </div>
+                                <p className="text-slate-300 text-xs leading-relaxed">{opp.description}</p>
+                                <div className="grid grid-cols-2 gap-1.5 text-xs">
+                                  <div className="bg-slate-900/60 rounded px-2 py-1.5">
+                                    <span className="text-slate-500">Effort </span>
+                                    <span className={opp.effort === "Low" ? "text-green-400" : opp.effort === "Medium" ? "text-amber-400" : "text-red-400"}>{opp.effort}</span>
+                                  </div>
+                                  <div className="bg-slate-900/60 rounded px-2 py-1.5">
+                                    <span className="text-slate-500">Impact </span>
+                                    <span className={opp.impact === "High" ? "text-green-400" : opp.impact === "Medium" ? "text-amber-400" : "text-slate-400"}>{opp.impact}</span>
+                                  </div>
+                                  <div className="bg-slate-900/60 rounded px-2 py-1.5 col-span-2">
+                                    <span className="text-slate-500">Tool: </span>
+                                    <span className="text-cyan-300">{opp.recommended_tool}</span>
+                                    <span className="text-slate-500"> · </span>
+                                    <span className="text-slate-400">{opp.time_to_implement}</span>
+                                  </div>
+                                </div>
+                                <div className="bg-slate-900/60 rounded px-2 py-1.5 text-xs">
+                                  <span className="text-amber-300 font-medium">ROI: </span>
+                                  <span className="text-slate-300">{opp.estimated_roi}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => { setOppResults((p) => { const n = {...p}; delete n[c.session_id]; return n; }); fetchOpportunities(c); }}
+                            className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
+                          >
+                            <Loader2 className="w-3 h-3" /> Regenerate
+                          </button>
                         </div>
                       );
                     })()}
